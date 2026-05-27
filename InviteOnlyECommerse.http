@@ -1,0 +1,6 @@
+@InviteOnlyECommerse_HostAddress = http://localhost:5186
+
+GET {{InviteOnlyECommerse_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###

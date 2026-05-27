@@ -1,4 +1,4 @@
-namespace InviteOnlyECommerse.DTOs;
+namespace Vkeram.Backend.DTOs;
 
 public class InviteResponse
 {

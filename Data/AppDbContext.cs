@@ -1,7 +1,7 @@
 using Microsoft.EntityFrameworkCore;
-using InviteOnlyECommerse.Models;
+using Vkeram.Backend.Models;
 
-namespace InviteOnlyECommerse.Data;
+namespace Vkeram.Backend.Data;
 
 public class AppDbContext : DbContext
 {

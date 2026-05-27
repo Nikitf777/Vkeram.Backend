@@ -1,10 +1,10 @@
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
-using InviteOnlyECommerse.Data;
-using InviteOnlyECommerse.DTOs;
-using InviteOnlyECommerse.Models;
+using Vkeram.Backend.Data;
+using Vkeram.Backend.DTOs;
+using Vkeram.Backend.Models;
 
-namespace InviteOnlyECommerse.Controllers;
+namespace Vkeram.Backend.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]

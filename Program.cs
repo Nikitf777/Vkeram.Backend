@@ -1,5 +1,5 @@
 using Microsoft.EntityFrameworkCore;
-using InviteOnlyECommerse.Data;
+using Vkeram.Backend.Data;
 
 var builder = WebApplication.CreateBuilder(args);
 

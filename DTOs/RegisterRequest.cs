@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace InviteOnlyECommerse.DTOs;
+namespace Vkeram.Backend.DTOs;
 
 public class RegisterRequest
 {

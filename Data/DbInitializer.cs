@@ -1,6 +1,6 @@
-using InviteOnlyECommerse.Models;
+using Vkeram.Backend.Models;
 
-namespace InviteOnlyECommerse.Data;
+namespace Vkeram.Backend.Data;
 
 public static class DbInitializer
 {

@@ -1,6 +1,6 @@
 using System.ComponentModel.DataAnnotations;
 
-namespace InviteOnlyECommerse.Models;
+namespace Vkeram.Backend.Models;
 
 public class InviteCode
 {

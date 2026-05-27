@@ -3,9 +3,8 @@ using System.Security.Claims;
 using System.Text;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using Vkeram.Backend.Data;
+using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
 
@@ -15,19 +14,21 @@ namespace Vkeram.Backend.Controllers;
 [Route("api/[controller]")]
 public class AuthController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IUserRepository _userRepo;
+    private readonly IInviteCodeRepository _inviteRepo;
     private readonly IConfiguration _configuration;
 
-    public AuthController(AppDbContext db, IConfiguration configuration)
+    public AuthController(IUserRepository userRepo, IInviteCodeRepository inviteRepo, IConfiguration configuration)
     {
-        _db = db;
+        _userRepo = userRepo;
+        _inviteRepo = inviteRepo;
         _configuration = configuration;
     }
 
     [HttpPost("register")]
     public async Task<ActionResult<AuthResponse>> Register([FromBody] RegisterRequest request)
     {
-        if (await _db.Users.AnyAsync(u => u.ContactEmail == request.ContactEmail))
+        if (await _userRepo.ExistsByEmailAsync(request.ContactEmail))
         {
             return BadRequest(new AuthResponse
             {
@@ -36,8 +37,7 @@ public class AuthController : ControllerBase
             });
         }
 
-        var invite = await _db.InviteCodes
-            .FirstOrDefaultAsync(i => i.Code == request.InviteCode && !i.IsUsed);
+        var invite = await _inviteRepo.GetByCodeAsync(request.InviteCode);
 
         if (invite == null)
         {
@@ -66,14 +66,8 @@ public class AuthController : ControllerBase
             PasswordHash = BCrypt.Net.BCrypt.HashPassword(request.Password)
         };
 
-        _db.Users.Add(user);
-        await _db.SaveChangesAsync();
-
-        invite.IsUsed = true;
-        invite.UsedByUserId = user.Id;
-        invite.UsedAt = DateTime.UtcNow;
-
-        await _db.SaveChangesAsync();
+        await _userRepo.CreateAsync(user);
+        await _inviteRepo.MarkAsUsedAsync(invite, user.Id);
 
         var token = GenerateJwtToken(user);
 
@@ -90,8 +84,7 @@ public class AuthController : ControllerBase
     [HttpPost("login")]
     public async Task<ActionResult<AuthResponse>> Login([FromBody] LoginRequest request)
     {
-        var user = await _db.Users
-            .FirstOrDefaultAsync(u => u.ContactEmail == request.Email && u.IsActive);
+        var user = await _userRepo.GetByEmailAsync(request.Email);
 
         if (user == null || !BCrypt.Net.BCrypt.Verify(request.Password, user.PasswordHash))
         {

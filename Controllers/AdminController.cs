@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Vkeram.Backend.Data;
+using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
 
@@ -10,12 +9,12 @@ namespace Vkeram.Backend.Controllers;
 [Route("api/[controller]")]
 public class AdminController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IInviteCodeRepository _inviteRepo;
     private readonly string _adminKey;
 
-    public AdminController(AppDbContext db, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IConfiguration config)
     {
-        _db = db;
+        _inviteRepo = inviteRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -44,11 +43,12 @@ public class AdminController : ControllerBase
 
         var expiresAt = DateTime.UtcNow.AddDays(request.ExpiresInDays);
         var codes = new List<string>();
+        var invites = new List<InviteCode>();
 
         for (int i = 0; i < request.Count; i++)
         {
             var code = $"B2B-{Guid.NewGuid().ToString("N")[..8].ToUpper()}";
-            _db.InviteCodes.Add(new InviteCode
+            invites.Add(new InviteCode
             {
                 Code = code,
                 CompanyName = request.CompanyName,
@@ -57,7 +57,7 @@ public class AdminController : ControllerBase
             codes.Add(code);
         }
 
-        await _db.SaveChangesAsync();
+        await _inviteRepo.CreateRangeAsync(invites);
 
         return Ok(new InviteResponse
         {
@@ -77,20 +77,18 @@ public class AdminController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Invalid admin key." });
         }
 
-        var invites = await _db.InviteCodes
-            .OrderByDescending(i => i.CreatedAt)
-            .Select(i => new
-            {
-                i.Id,
-                i.Code,
-                i.CompanyName,
-                i.IsUsed,
-                i.UsedByUserId,
-                i.CreatedAt,
-                i.UsedAt,
-                i.ExpiresAt
-            })
-            .ToListAsync();
+        var inviteList = await _inviteRepo.GetAllAsync();
+        var invites = inviteList.Select(i => new
+        {
+            i.Id,
+            i.Code,
+            i.CompanyName,
+            i.IsUsed,
+            i.UsedByUserId,
+            i.CreatedAt,
+            i.UsedAt,
+            i.ExpiresAt
+        }).ToList();
 
         return Ok(new { Success = true, Invites = invites });
     }

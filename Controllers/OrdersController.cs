@@ -1,8 +1,7 @@
 using System.Security.Claims;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Vkeram.Backend.Data;
+using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
 
@@ -13,11 +12,13 @@ namespace Vkeram.Backend.Controllers;
 [Route("api/[controller]")]
 public class OrdersController : ControllerBase
 {
-    private readonly AppDbContext _db;
+    private readonly IOrderRepository _orderRepo;
+    private readonly IProductRepository _productRepo;
 
-    public OrdersController(AppDbContext db)
+    public OrdersController(IOrderRepository orderRepo, IProductRepository productRepo)
     {
-        _db = db;
+        _orderRepo = orderRepo;
+        _productRepo = productRepo;
     }
 
     [HttpPost]
@@ -35,7 +36,7 @@ public class OrdersController : ControllerBase
         }
 
         var allProductIds = requests.SelectMany(r => r.Products.Select(p => p.ProductId)).Distinct().ToList();
-        var existingProducts = await _db.Products.Where(p => allProductIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+        var existingProducts = await _productRepo.GetByIdsAsync(allProductIds);
         foreach (var unknownId in allProductIds.Where(id => !existingProducts.ContainsKey(id)))
         {
             return BadRequest(new OrderResponse
@@ -84,8 +85,7 @@ public class OrdersController : ControllerBase
                 });
             }
 
-            if (await _db.OrderReservations
-                .AnyAsync(r => r.StartTime < slot.EndTime && slot.StartTime < r.EndTime))
+            if (await _orderRepo.HasOverlappingReservationAsync(slot.StartTime, slot.EndTime))
             {
                 return BadRequest(new OrderResponse
                 {
@@ -136,8 +136,7 @@ public class OrdersController : ControllerBase
             order.Reservations.Add(reservation);
         }
 
-        _db.Orders.Add(order);
-        await _db.SaveChangesAsync();
+        await _orderRepo.CreateAsync(order);
 
         return Ok(new OrderResponse
         {

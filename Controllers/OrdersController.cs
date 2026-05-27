@@ -34,11 +34,43 @@ public class OrdersController : ControllerBase
             });
         }
 
+        var allProductIds = requests.SelectMany(r => r.Products.Select(p => p.ProductId)).Distinct().ToList();
+        var existingProducts = await _db.Products.Where(p => allProductIds.Contains(p.Id)).ToDictionaryAsync(p => p.Id);
+        foreach (var unknownId in allProductIds.Where(id => !existingProducts.ContainsKey(id)))
+        {
+            return BadRequest(new OrderResponse
+            {
+                Success = false,
+                Message = $"Product with ID {unknownId} does not exist."
+            });
+        }
+
+        foreach (var r in requests)
+        {
+            if (r.Products.Count == 0)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Each reservation must have at least one product."
+                });
+            }
+
+            if (r.Products.GroupBy(p => p.ProductId).Any(g => g.Count() > 1))
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Duplicate products are not allowed within a reservation."
+                });
+            }
+        }
+
         var slots = requests.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
                 r.StartTime = DateTime.SpecifyKind(r.StartTime, DateTimeKind.Utc);
-            return (StartTime: r.StartTime, EndTime: r.StartTime.AddMinutes(30));
+            return (StartTime: r.StartTime, EndTime: r.StartTime.AddMinutes(30), Products: r.Products);
         }).ToList();
 
         foreach (var slot in slots)
@@ -86,11 +118,22 @@ public class OrdersController : ControllerBase
 
         foreach (var slot in slots)
         {
-            order.Reservations.Add(new OrderReservation
+            var reservation = new OrderReservation
             {
                 StartTime = slot.StartTime,
                 EndTime = slot.EndTime
-            });
+            };
+
+            foreach (var productReq in slot.Products)
+            {
+                reservation.ProductReservations.Add(new ProductReservation
+                {
+                    ProductId = productReq.ProductId,
+                    Quantity = productReq.Quantity
+                });
+            }
+
+            order.Reservations.Add(reservation);
         }
 
         _db.Orders.Add(order);
@@ -107,7 +150,13 @@ public class OrdersController : ControllerBase
             Reservations = order.Reservations.Select(r => new ReservationInfo
             {
                 StartTime = r.StartTime,
-                EndTime = r.EndTime
+                EndTime = r.EndTime,
+                Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = existingProducts[pr.ProductId].Name,
+                    Quantity = pr.Quantity
+                }).ToList()
             }).ToList()
         });
     }

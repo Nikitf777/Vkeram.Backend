@@ -14,4 +14,6 @@ public class OrderReservation
     public DateTime StartTime { get; set; }
 
     public DateTime EndTime { get; set; }
+
+    public List<ProductReservation> ProductReservations { get; set; } = new();
 }

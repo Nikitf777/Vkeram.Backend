@@ -8,6 +8,19 @@ public static class DbInitializer
     {
         await db.Database.EnsureCreatedAsync();
 
+        if (!db.Products.Any())
+        {
+            db.Products.AddRange(
+                new Product { Name = "Concrete Block", Description = "Standard 8x8x16 concrete block", UnitPrice = 1.50m },
+                new Product { Name = "Cement Bag", Description = "50kg Portland cement", UnitPrice = 12.00m },
+                new Product { Name = "Steel Rebar", Description = "12mm x 6m steel reinforcement bar", UnitPrice = 8.50m },
+                new Product { Name = "Sand", Description = "Fine construction sand per ton", UnitPrice = 35.00m },
+                new Product { Name = "Gravel", Description = "Crushed stone gravel per ton", UnitPrice = 40.00m }
+            );
+
+            await db.SaveChangesAsync();
+        }
+
         if (!db.InviteCodes.Any())
         {
             db.InviteCodes.AddRange(

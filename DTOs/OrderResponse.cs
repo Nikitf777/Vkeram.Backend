@@ -15,4 +15,12 @@ public class ReservationInfo
 {
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
+    public List<ProductReservationInfo>? Products { get; set; }
+}
+
+public class ProductReservationInfo
+{
+    public int ProductId { get; set; }
+    public string ProductName { get; set; } = string.Empty;
+    public int Quantity { get; set; }
 }

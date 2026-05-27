@@ -1,5 +1,10 @@
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Vkeram.Backend.Data;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
@@ -11,10 +16,12 @@ namespace Vkeram.Backend.Controllers;
 public class AuthController : ControllerBase
 {
     private readonly AppDbContext _db;
+    private readonly IConfiguration _configuration;
 
-    public AuthController(AppDbContext db)
+    public AuthController(AppDbContext db, IConfiguration configuration)
     {
         _db = db;
+        _configuration = configuration;
     }
 
     [HttpPost("register")]
@@ -68,12 +75,15 @@ public class AuthController : ControllerBase
 
         await _db.SaveChangesAsync();
 
+        var token = GenerateJwtToken(user);
+
         return Ok(new AuthResponse
         {
             Success = true,
             Message = "Registration successful.",
             UserId = user.Id,
-            CompanyName = user.CompanyName
+            CompanyName = user.CompanyName,
+            Token = token
         });
     }
 
@@ -92,12 +102,57 @@ public class AuthController : ControllerBase
             });
         }
 
+        var token = GenerateJwtToken(user);
+
         return Ok(new AuthResponse
         {
             Success = true,
             Message = "Login successful.",
             UserId = user.Id,
-            CompanyName = user.CompanyName
+            CompanyName = user.CompanyName,
+            Token = token
+        });
+    }
+
+    private string GenerateJwtToken(User user)
+    {
+        var jwtSettings = _configuration.GetSection("Jwt");
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSettings["Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
+        {
+            new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new Claim(ClaimTypes.Email, user.ContactEmail),
+            new Claim("companyName", user.CompanyName)
+        };
+
+        var token = new JwtSecurityToken(
+            issuer: jwtSettings["Issuer"],
+            audience: jwtSettings["Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(double.Parse(jwtSettings["ExpireMinutes"] ?? "20")),
+            signingCredentials: credentials
+        );
+
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public ActionResult<AuthResponse> Me()
+    {
+        var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        var email = User.FindFirst(ClaimTypes.Email)?.Value;
+        var companyName = User.FindFirst("companyName")?.Value;
+
+        return Ok(new AuthResponse
+        {
+            Success = true,
+            Message = "Token is valid.",
+            UserId = int.Parse(userId!),
+            CompanyName = companyName,
+            Token = Request.Headers.Authorization.ToString().Replace("Bearer ", "")
         });
     }
 }

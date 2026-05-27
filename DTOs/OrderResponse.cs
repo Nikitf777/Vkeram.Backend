@@ -1,0 +1,18 @@
+namespace Vkeram.Backend.DTOs;
+
+public class OrderResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int? OrderId { get; set; }
+    public string? Status { get; set; }
+    public int? UserId { get; set; }
+    public DateTime? CreatedAt { get; set; }
+    public List<ReservationInfo>? Reservations { get; set; }
+}
+
+public class ReservationInfo
+{
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+}

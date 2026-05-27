@@ -9,6 +9,8 @@ public class AppDbContext : DbContext
 
     public DbSet<User> Users => Set<User>();
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
+    public DbSet<Order> Orders => Set<Order>();
+    public DbSet<OrderReservation> OrderReservations => Set<OrderReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -21,6 +23,17 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.Code).IsUnique();
             entity.HasIndex(e => e.IsUsed);
+        });
+
+        modelBuilder.Entity<Order>(entity =>
+        {
+            entity.HasIndex(e => e.UserId);
+            entity.Property(e => e.Status).HasMaxLength(50);
+        });
+
+        modelBuilder.Entity<OrderReservation>(entity =>
+        {
+            entity.HasIndex(e => new { e.StartTime, e.EndTime });
         });
     }
 }

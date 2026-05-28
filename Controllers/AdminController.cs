@@ -12,13 +12,15 @@ public class AdminController : ControllerBase
     private readonly IInviteCodeRepository _inviteRepo;
     private readonly IOrderRepository _orderRepo;
     private readonly IWorkDayRepository _workDayRepo;
+    private readonly IWorkingHoursRepository _workingHoursRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
         _workDayRepo = workDayRepo;
+        _workingHoursRepo = workingHoursRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -287,6 +289,88 @@ public class AdminController : ControllerBase
                 Id = workDay.Id,
                 DayName = workDay.DayName,
                 IsWorkingDay = workDay.IsWorkingDay
+            }
+        });
+    }
+
+    [HttpGet("working-hours")]
+    public async Task<ActionResult<WorkingHoursResponse>> GetWorkingHours(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var workingHours = await _workingHoursRepo.GetAsync();
+        if (workingHours == null)
+        {
+            return NotFound(new WorkingHoursResponse
+            {
+                Success = false,
+                Message = "Working hours not configured."
+            });
+        }
+
+        return Ok(new WorkingHoursResponse
+        {
+            Success = true,
+            Message = "Working hours retrieved.",
+            WorkingHours = new WorkingHoursInfo
+            {
+                Id = workingHours.Id,
+                StartTime = workingHours.StartTime.ToString("HH:mm"),
+                EndTime = workingHours.EndTime.ToString("HH:mm")
+            }
+        });
+    }
+
+    [HttpPatch("working-hours")]
+    public async Task<ActionResult<WorkingHoursResponse>> UpdateWorkingHours(
+        [FromBody] UpdateWorkingHoursRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
+            !TimeOnly.TryParse(request.EndTime, out var endTime))
+        {
+            return BadRequest(new WorkingHoursResponse
+            {
+                Success = false,
+                Message = "Invalid time format. Use HH:mm (e.g. 09:00)."
+            });
+        }
+
+        if (startTime >= endTime)
+        {
+            return BadRequest(new WorkingHoursResponse
+            {
+                Success = false,
+                Message = "Start time must be before end time."
+            });
+        }
+
+        var workingHours = await _workingHoursRepo.GetAsync();
+        if (workingHours == null)
+        {
+            return NotFound(new WorkingHoursResponse
+            {
+                Success = false,
+                Message = "Working hours not configured."
+            });
+        }
+
+        workingHours.StartTime = startTime;
+        workingHours.EndTime = endTime;
+        await _workingHoursRepo.UpdateAsync(workingHours);
+
+        return Ok(new WorkingHoursResponse
+        {
+            Success = true,
+            Message = "Working hours updated.",
+            WorkingHours = new WorkingHoursInfo
+            {
+                Id = workingHours.Id,
+                StartTime = workingHours.StartTime.ToString("HH:mm"),
+                EndTime = workingHours.EndTime.ToString("HH:mm")
             }
         });
     }

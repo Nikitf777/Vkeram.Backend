@@ -15,6 +15,7 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IInviteCodeRepository, InviteCodeRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IWorkDayRepository, WorkDayRepository>();
+builder.Services.AddScoped<IWorkingHoursRepository, WorkingHoursRepository>();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
 {

@@ -16,12 +16,14 @@ public class OrdersController : ControllerBase
     private readonly IOrderRepository _orderRepo;
     private readonly IProductService _productService;
     private readonly IWorkDayRepository _workDayRepo;
+    private readonly IWorkingHoursRepository _workingHoursRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
         _workDayRepo = workDayRepo;
+        _workingHoursRepo = workingHoursRepo;
     }
 
     [HttpGet("reservations")]
@@ -110,6 +112,8 @@ public class OrdersController : ControllerBase
         var workDays = await _workDayRepo.GetAllAsync();
         var workingDayNames = workDays.Where(w => w.IsWorkingDay).Select(w => w.DayName).ToHashSet();
 
+        var workingHours = await _workingHoursRepo.GetAsync();
+
         var slots = payload.Reservations.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
@@ -135,6 +139,21 @@ public class OrdersController : ControllerBase
                     Success = false,
                     Message = "Reservations can only be made on working days."
                 });
+            }
+
+            if (workingHours != null)
+            {
+                var slotStart = TimeOnly.FromDateTime(slot.StartTime);
+                var slotEnd = TimeOnly.FromDateTime(slot.EndTime);
+
+                if (slotStart < workingHours.StartTime || slotEnd > workingHours.EndTime)
+                {
+                    return BadRequest(new OrderResponse
+                    {
+                        Success = false,
+                        Message = $"Reservations must be within working hours ({workingHours.StartTime:HH:mm}-{workingHours.EndTime:HH:mm})."
+                    });
+                }
             }
 
             if (await _orderRepo.HasOverlappingReservationAsync(slot.StartTime, slot.EndTime))
@@ -202,6 +221,20 @@ public class OrdersController : ControllerBase
                     Success = false,
                     Message = "Deliveries can only be scheduled on working days."
                 });
+            }
+
+            if (workingHours != null)
+            {
+                var deliveryTime = TimeOnly.FromDateTime(deliveryReq.DeliveryTime);
+
+                if (deliveryTime < workingHours.StartTime || deliveryTime > workingHours.EndTime)
+                {
+                    return BadRequest(new OrderResponse
+                    {
+                        Success = false,
+                        Message = $"Deliveries must be scheduled within working hours ({workingHours.StartTime:HH:mm}-{workingHours.EndTime:HH:mm})."
+                    });
+                }
             }
 
             var delivery = new OrderDelivery

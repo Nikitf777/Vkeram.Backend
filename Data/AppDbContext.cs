@@ -14,6 +14,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderDelivery> OrderDeliveries => Set<OrderDelivery>();
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
     public DbSet<WorkDay> WorkDays => Set<WorkDay>();
+    public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -56,6 +57,11 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => e.DayName).IsUnique();
             entity.Property(e => e.DayName).HasMaxLength(20);
+        });
+
+        modelBuilder.Entity<WorkingHours>(entity =>
+        {
+            entity.HasData(new WorkingHours { Id = 1, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(18, 0) });
         });
     }
 }

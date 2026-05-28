@@ -35,5 +35,20 @@ public static class DbInitializer
 
             await db.SaveChangesAsync();
         }
+
+        if (!db.WorkDays.Any())
+        {
+            db.WorkDays.AddRange(
+                new WorkDay { DayName = "Monday", IsWorkingDay = true },
+                new WorkDay { DayName = "Tuesday", IsWorkingDay = true },
+                new WorkDay { DayName = "Wednesday", IsWorkingDay = true },
+                new WorkDay { DayName = "Thursday", IsWorkingDay = true },
+                new WorkDay { DayName = "Friday", IsWorkingDay = true },
+                new WorkDay { DayName = "Saturday", IsWorkingDay = false },
+                new WorkDay { DayName = "Sunday", IsWorkingDay = false }
+            );
+
+            await db.SaveChangesAsync();
+        }
     }
 }

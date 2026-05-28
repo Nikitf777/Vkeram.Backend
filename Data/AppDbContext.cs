@@ -13,6 +13,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderReservation> OrderReservations => Set<OrderReservation>();
     public DbSet<OrderDelivery> OrderDeliveries => Set<OrderDelivery>();
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
+    public DbSet<WorkDay> WorkDays => Set<WorkDay>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -49,6 +50,12 @@ public class AppDbContext : DbContext
         {
             entity.HasIndex(e => new { e.OrderReservationId, e.ProductId }).IsUnique();
             entity.HasIndex(e => new { e.OrderDeliveryId, e.ProductId }).IsUnique();
+        });
+
+        modelBuilder.Entity<WorkDay>(entity =>
+        {
+            entity.HasIndex(e => e.DayName).IsUnique();
+            entity.Property(e => e.DayName).HasMaxLength(20);
         });
     }
 }

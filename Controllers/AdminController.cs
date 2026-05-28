@@ -11,12 +11,14 @@ public class AdminController : ControllerBase
 {
     private readonly IInviteCodeRepository _inviteRepo;
     private readonly IOrderRepository _orderRepo;
+    private readonly IWorkDayRepository _workDayRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
+        _workDayRepo = workDayRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -230,6 +232,62 @@ public class AdminController : ControllerBase
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt
+        });
+    }
+
+    [HttpGet("workdays")]
+    public async Task<ActionResult<WorkDayResponse>> GetWorkDays(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var workDays = await _workDayRepo.GetAllAsync();
+        var items = workDays.Select(w => new WorkDayInfo
+        {
+            Id = w.Id,
+            DayName = w.DayName,
+            IsWorkingDay = w.IsWorkingDay
+        }).ToList();
+
+        return Ok(new WorkDayResponse
+        {
+            Success = true,
+            Message = "Work days retrieved.",
+            WorkDays = items
+        });
+    }
+
+    [HttpPatch("workdays/{id}")]
+    public async Task<ActionResult<WorkDayResponse>> UpdateWorkDay(
+        int id,
+        [FromBody] UpdateWorkDayRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var workDay = await _workDayRepo.GetByIdAsync(id);
+        if (workDay == null)
+        {
+            return NotFound(new WorkDayResponse
+            {
+                Success = false,
+                Message = "Work day not found."
+            });
+        }
+
+        workDay.IsWorkingDay = request.IsWorkingDay;
+        await _workDayRepo.UpdateAsync(workDay);
+
+        return Ok(new WorkDayResponse
+        {
+            Success = true,
+            Message = "Work day updated.",
+            WorkDay = new WorkDayInfo
+            {
+                Id = workDay.Id,
+                DayName = workDay.DayName,
+                IsWorkingDay = workDay.IsWorkingDay
+            }
         });
     }
 }

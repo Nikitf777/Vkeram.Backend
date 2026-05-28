@@ -1,8 +1,22 @@
 namespace Vkeram.Backend.Models;
 
-public enum OrderStatus
+public enum ConfirmationStatus
 {
-    PENDING_CONFIRMATION,
-    PENDING_PAYMENT,
-    ACCEPTED
+    Confirmed,
+    Unconfirmed,
+    Cancelled
+}
+
+public enum PaymentStatus
+{
+    Paid,
+    PartiallyPaid,
+    Unpaid
+}
+
+public enum ShipmentStatus
+{
+    Shipped,
+    PartiallyShipped,
+    Unshipped
 }

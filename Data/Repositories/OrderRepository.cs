@@ -23,4 +23,15 @@ public class OrderRepository : IOrderRepository
         await _db.SaveChangesAsync();
         return order;
     }
+
+    public async Task<Order?> GetByIdAsync(int id)
+    {
+        return await _db.Orders.FindAsync(id);
+    }
+
+    public async Task UpdateAsync(Order order)
+    {
+        _db.Orders.Update(order);
+        await _db.SaveChangesAsync();
+    }
 }

@@ -10,11 +10,13 @@ namespace Vkeram.Backend.Controllers;
 public class AdminController : ControllerBase
 {
     private readonly IInviteCodeRepository _inviteRepo;
+    private readonly IOrderRepository _orderRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
+        _orderRepo = orderRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -91,5 +93,143 @@ public class AdminController : ControllerBase
         }).ToList();
 
         return Ok(new { Success = true, Invites = invites });
+    }
+
+    private bool IsValidAdmin(string adminKey) => adminKey == _adminKey;
+
+    private ActionResult UnauthorizedResponse() =>
+        Unauthorized(new { Success = false, Message = "Invalid admin key." });
+
+    private static readonly string[] ValidConfirmationStatuses = ["Confirmed", "Unconfirmed", "Cancelled"];
+    private static readonly string[] ValidPaymentStatuses = ["Paid", "PartiallyPaid", "Unpaid"];
+    private static readonly string[] ValidShipmentStatuses = ["Shipped", "PartiallyShipped", "Unshipped"];
+
+    [HttpPatch("orders/{orderId}/confirmation")]
+    public async Task<ActionResult<AdminOrderResponse>> UpdateConfirmationStatus(
+        int orderId,
+        [FromBody] UpdateOrderStatusRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!ValidConfirmationStatuses.Contains(request.Status))
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = $"Invalid confirmation status. Valid values: {string.Join(", ", ValidConfirmationStatuses)}."
+            });
+        }
+
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null)
+        {
+            return NotFound(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "Order not found."
+            });
+        }
+
+        order.ConfirmationStatus = request.Status;
+        await _orderRepo.UpdateAsync(order);
+
+        return Ok(new AdminOrderResponse
+        {
+            Success = true,
+            Message = "Confirmation status updated.",
+            OrderId = order.Id,
+            ConfirmationStatus = order.ConfirmationStatus,
+            PaymentStatus = order.PaymentStatus,
+            ShipmentStatus = order.ShipmentStatus,
+            UserId = order.UserId,
+            CreatedAt = order.CreatedAt
+        });
+    }
+
+    [HttpPatch("orders/{orderId}/payment")]
+    public async Task<ActionResult<AdminOrderResponse>> UpdatePaymentStatus(
+        int orderId,
+        [FromBody] UpdateOrderStatusRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!ValidPaymentStatuses.Contains(request.Status))
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = $"Invalid payment status. Valid values: {string.Join(", ", ValidPaymentStatuses)}."
+            });
+        }
+
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null)
+        {
+            return NotFound(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "Order not found."
+            });
+        }
+
+        order.PaymentStatus = request.Status;
+        await _orderRepo.UpdateAsync(order);
+
+        return Ok(new AdminOrderResponse
+        {
+            Success = true,
+            Message = "Payment status updated.",
+            OrderId = order.Id,
+            ConfirmationStatus = order.ConfirmationStatus,
+            PaymentStatus = order.PaymentStatus,
+            ShipmentStatus = order.ShipmentStatus,
+            UserId = order.UserId,
+            CreatedAt = order.CreatedAt
+        });
+    }
+
+    [HttpPatch("orders/{orderId}/shipment")]
+    public async Task<ActionResult<AdminOrderResponse>> UpdateShipmentStatus(
+        int orderId,
+        [FromBody] UpdateOrderStatusRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!ValidShipmentStatuses.Contains(request.Status))
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = $"Invalid shipment status. Valid values: {string.Join(", ", ValidShipmentStatuses)}."
+            });
+        }
+
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null)
+        {
+            return NotFound(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "Order not found."
+            });
+        }
+
+        order.ShipmentStatus = request.Status;
+        await _orderRepo.UpdateAsync(order);
+
+        return Ok(new AdminOrderResponse
+        {
+            Success = true,
+            Message = "Shipment status updated.",
+            OrderId = order.Id,
+            ConfirmationStatus = order.ConfirmationStatus,
+            PaymentStatus = order.PaymentStatus,
+            ShipmentStatus = order.ShipmentStatus,
+            UserId = order.UserId,
+            CreatedAt = order.CreatedAt
+        });
     }
 }

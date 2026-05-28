@@ -6,4 +6,6 @@ public interface IOrderRepository
 {
     Task<bool> HasOverlappingReservationAsync(DateTime startTime, DateTime endTime);
     Task<Order> CreateAsync(Order order);
+    Task<Order?> GetByIdAsync(int id);
+    Task UpdateAsync(Order order);
 }

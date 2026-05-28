@@ -13,7 +13,13 @@ public class Order
     public User User { get; set; } = null!;
 
     [Required, MaxLength(50)]
-    public string Status { get; set; } = OrderStatus.PENDING_PAYMENT.ToString();
+    public string ConfirmationStatus { get; set; } = Models.ConfirmationStatus.Confirmed.ToString();
+
+    [Required, MaxLength(50)]
+    public string PaymentStatus { get; set; } = Models.PaymentStatus.Unpaid.ToString();
+
+    [Required, MaxLength(50)]
+    public string ShipmentStatus { get; set; } = Models.ShipmentStatus.Unshipped.ToString();
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 

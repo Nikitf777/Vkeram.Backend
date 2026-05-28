@@ -114,7 +114,9 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             UserId = userId,
-            Status = OrderStatus.PENDING_PAYMENT.ToString()
+            ConfirmationStatus = Models.ConfirmationStatus.Confirmed.ToString(),
+            PaymentStatus = Models.PaymentStatus.Unpaid.ToString(),
+            ShipmentStatus = Models.ShipmentStatus.Unshipped.ToString()
         };
 
         foreach (var slot in slots)
@@ -144,7 +146,9 @@ public class OrdersController : ControllerBase
             Success = true,
             Message = "Order created successfully.",
             OrderId = order.Id,
-            Status = order.Status,
+            ConfirmationStatus = order.ConfirmationStatus,
+            PaymentStatus = order.PaymentStatus,
+            ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r => new ReservationInfo

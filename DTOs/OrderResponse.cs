@@ -5,10 +5,24 @@ public class OrderResponse
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
     public int? OrderId { get; set; }
-    public string? Status { get; set; }
+    public string? ConfirmationStatus { get; set; }
+    public string? PaymentStatus { get; set; }
+    public string? ShipmentStatus { get; set; }
     public int? UserId { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<ReservationInfo>? Reservations { get; set; }
+}
+
+public class AdminOrderResponse
+{
+    public bool Success { get; set; }
+    public string Message { get; set; } = string.Empty;
+    public int? OrderId { get; set; }
+    public string? ConfirmationStatus { get; set; }
+    public string? PaymentStatus { get; set; }
+    public string? ShipmentStatus { get; set; }
+    public int? UserId { get; set; }
+    public DateTime? CreatedAt { get; set; }
 }
 
 public class ReservationInfo

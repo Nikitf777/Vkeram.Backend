@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Mvc;
 using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
+using Vkeram.Backend.Services;
 
 namespace Vkeram.Backend.Controllers;
 
@@ -13,12 +14,12 @@ namespace Vkeram.Backend.Controllers;
 public class OrdersController : ControllerBase
 {
     private readonly IOrderRepository _orderRepo;
-    private readonly IProductRepository _productRepo;
+    private readonly IProductService _productService;
 
-    public OrdersController(IOrderRepository orderRepo, IProductRepository productRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService)
     {
         _orderRepo = orderRepo;
-        _productRepo = productRepo;
+        _productService = productService;
     }
 
     [HttpPost]
@@ -36,7 +37,7 @@ public class OrdersController : ControllerBase
         }
 
         var allProductIds = requests.SelectMany(r => r.Products.Select(p => p.ProductId)).Distinct().ToList();
-        var existingProducts = await _productRepo.GetByIdsAsync(allProductIds);
+        var existingProducts = await _productService.GetByIdsAsync(allProductIds);
         foreach (var unknownId in allProductIds.Where(id => !existingProducts.ContainsKey(id)))
         {
             return BadRequest(new OrderResponse

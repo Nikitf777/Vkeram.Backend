@@ -4,6 +4,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Vkeram.Backend.Data;
 using Vkeram.Backend.Data.Repositories;
+using Vkeram.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -12,8 +13,13 @@ builder.Services.AddOpenApi();
 
 builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IInviteCodeRepository, InviteCodeRepository>();
-builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
+
+builder.Services.AddHttpClient<IProductService, ProductService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["OneC:BaseUrl"]! + builder.Configuration["OneC:ProductsPath"]);
+    client.DefaultRequestHeaders.Add("Authorization", builder.Configuration["OneC:AuthHeader"]);
+});
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));

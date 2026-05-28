@@ -11,7 +11,6 @@ public class AppDbContext : DbContext
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderReservation> OrderReservations => Set<OrderReservation>();
-    public DbSet<Product> Products => Set<Product>();
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)

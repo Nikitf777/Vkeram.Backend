@@ -15,11 +15,13 @@ public class OrdersController : ControllerBase
 {
     private readonly IOrderRepository _orderRepo;
     private readonly IProductService _productService;
+    private readonly IWorkDayRepository _workDayRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
+        _workDayRepo = workDayRepo;
     }
 
     [HttpGet("reservations")]
@@ -105,6 +107,9 @@ public class OrdersController : ControllerBase
             }
         }
 
+        var workDays = await _workDayRepo.GetAllAsync();
+        var workingDayNames = workDays.Where(w => w.IsWorkingDay).Select(w => w.DayName).ToHashSet();
+
         var slots = payload.Reservations.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
@@ -120,6 +125,15 @@ public class OrdersController : ControllerBase
                 {
                     Success = false,
                     Message = "Reservation start time must be in the future."
+                });
+            }
+
+            if (!workingDayNames.Contains(slot.StartTime.DayOfWeek.ToString()))
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Reservations can only be made on working days."
                 });
             }
 
@@ -180,6 +194,15 @@ public class OrdersController : ControllerBase
         {
             if (deliveryReq.DeliveryTime.Kind == DateTimeKind.Unspecified)
                 deliveryReq.DeliveryTime = DateTime.SpecifyKind(deliveryReq.DeliveryTime, DateTimeKind.Utc);
+
+            if (!workingDayNames.Contains(deliveryReq.DeliveryTime.DayOfWeek.ToString()))
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Deliveries can only be scheduled on working days."
+                });
+            }
 
             var delivery = new OrderDelivery
             {

@@ -15,6 +15,8 @@ public class AppDbContext : DbContext
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
     public DbSet<WorkDay> WorkDays => Set<WorkDay>();
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
+    public DbSet<MinimumBookingDays> MinimumBookingDays => Set<MinimumBookingDays>();
+    public DbSet<MinimumDeliveryDays> MinimumDeliveryDays => Set<MinimumDeliveryDays>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -62,6 +64,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<WorkingHours>(entity =>
         {
             entity.HasData(new WorkingHours { Id = 1, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(18, 0) });
+        });
+
+        modelBuilder.Entity<MinimumBookingDays>(entity =>
+        {
+            entity.HasData(new MinimumBookingDays { Id = 1, Days = 1 });
+        });
+
+        modelBuilder.Entity<MinimumDeliveryDays>(entity =>
+        {
+            entity.HasData(new MinimumDeliveryDays { Id = 1, Days = 1 });
         });
     }
 }

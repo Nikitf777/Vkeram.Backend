@@ -13,14 +13,18 @@ public class AdminController : ControllerBase
     private readonly IOrderRepository _orderRepo;
     private readonly IWorkDayRepository _workDayRepo;
     private readonly IWorkingHoursRepository _workingHoursRepo;
+    private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
+    private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
         _workDayRepo = workDayRepo;
         _workingHoursRepo = workingHoursRepo;
+        _minBookingDaysRepo = minBookingDaysRepo;
+        _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -371,6 +375,144 @@ public class AdminController : ControllerBase
                 Id = workingHours.Id,
                 StartTime = workingHours.StartTime.ToString("HH:mm"),
                 EndTime = workingHours.EndTime.ToString("HH:mm")
+            }
+        });
+    }
+
+    [HttpGet("minimum-booking-days")]
+    public async Task<ActionResult<MinimumBookingDaysResponse>> GetMinimumBookingDays(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var minDays = await _minBookingDaysRepo.GetAsync();
+        if (minDays == null)
+        {
+            return NotFound(new MinimumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Minimum booking days not configured."
+            });
+        }
+
+        return Ok(new MinimumBookingDaysResponse
+        {
+            Success = true,
+            Message = "Minimum booking days retrieved.",
+            MinimumBookingDays = new MinimumBookingDaysInfo
+            {
+                Id = minDays.Id,
+                Days = minDays.Days
+            }
+        });
+    }
+
+    [HttpPatch("minimum-booking-days")]
+    public async Task<ActionResult<MinimumBookingDaysResponse>> UpdateMinimumBookingDays(
+        [FromBody] UpdateMinimumBookingDaysRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.Days < 1 || request.Days > 365)
+        {
+            return BadRequest(new MinimumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Days must be between 1 and 365."
+            });
+        }
+
+        var minDays = await _minBookingDaysRepo.GetAsync();
+        if (minDays == null)
+        {
+            return NotFound(new MinimumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Minimum booking days not configured."
+            });
+        }
+
+        minDays.Days = request.Days;
+        await _minBookingDaysRepo.UpdateAsync(minDays);
+
+        return Ok(new MinimumBookingDaysResponse
+        {
+            Success = true,
+            Message = "Minimum booking days updated.",
+            MinimumBookingDays = new MinimumBookingDaysInfo
+            {
+                Id = minDays.Id,
+                Days = minDays.Days
+            }
+        });
+    }
+
+    [HttpGet("minimum-delivery-days")]
+    public async Task<ActionResult<MinimumDeliveryDaysResponse>> GetMinimumDeliveryDays(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var minDays = await _minDeliveryDaysRepo.GetAsync();
+        if (minDays == null)
+        {
+            return NotFound(new MinimumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Minimum delivery days not configured."
+            });
+        }
+
+        return Ok(new MinimumDeliveryDaysResponse
+        {
+            Success = true,
+            Message = "Minimum delivery days retrieved.",
+            MinimumDeliveryDays = new MinimumDeliveryDaysInfo
+            {
+                Id = minDays.Id,
+                Days = minDays.Days
+            }
+        });
+    }
+
+    [HttpPatch("minimum-delivery-days")]
+    public async Task<ActionResult<MinimumDeliveryDaysResponse>> UpdateMinimumDeliveryDays(
+        [FromBody] UpdateMinimumDeliveryDaysRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.Days < 1 || request.Days > 365)
+        {
+            return BadRequest(new MinimumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Days must be between 1 and 365."
+            });
+        }
+
+        var minDays = await _minDeliveryDaysRepo.GetAsync();
+        if (minDays == null)
+        {
+            return NotFound(new MinimumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Minimum delivery days not configured."
+            });
+        }
+
+        minDays.Days = request.Days;
+        await _minDeliveryDaysRepo.UpdateAsync(minDays);
+
+        return Ok(new MinimumDeliveryDaysResponse
+        {
+            Success = true,
+            Message = "Minimum delivery days updated.",
+            MinimumDeliveryDays = new MinimumDeliveryDaysInfo
+            {
+                Id = minDays.Id,
+                Days = minDays.Days
             }
         });
     }

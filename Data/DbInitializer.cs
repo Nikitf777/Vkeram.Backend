@@ -61,5 +61,25 @@ public static class DbInitializer
 
             await db.SaveChangesAsync();
         }
+
+        if (!db.MinimumBookingDays.Any())
+        {
+            db.MinimumBookingDays.Add(new MinimumBookingDays
+            {
+                Days = 1
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        if (!db.MinimumDeliveryDays.Any())
+        {
+            db.MinimumDeliveryDays.Add(new MinimumDeliveryDays
+            {
+                Days = 1
+            });
+
+            await db.SaveChangesAsync();
+        }
     }
 }

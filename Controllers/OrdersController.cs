@@ -17,13 +17,17 @@ public class OrdersController : ControllerBase
     private readonly IProductService _productService;
     private readonly IWorkDayRepository _workDayRepo;
     private readonly IWorkingHoursRepository _workingHoursRepo;
+    private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
+    private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
         _workDayRepo = workDayRepo;
         _workingHoursRepo = workingHoursRepo;
+        _minBookingDaysRepo = minBookingDaysRepo;
+        _minDeliveryDaysRepo = minDeliveryDaysRepo;
     }
 
     [HttpGet("reservations")]
@@ -114,6 +118,28 @@ public class OrdersController : ControllerBase
 
         var workingHours = await _workingHoursRepo.GetAsync();
 
+        var minBookingDays = await _minBookingDaysRepo.GetAsync();
+        DateOnly? earliestReservationDate = null;
+        if (minBookingDays != null)
+        {
+            var now = DateTime.UtcNow;
+            if (workingHours != null && TimeOnly.FromDateTime(now) > workingHours.StartTime)
+                earliestReservationDate = DateOnly.FromDateTime(now.Date.AddDays(minBookingDays.Days));
+            else
+                earliestReservationDate = DateOnly.FromDateTime(now.Date.AddDays(minBookingDays.Days - 1));
+        }
+
+        var minDeliveryDays = await _minDeliveryDaysRepo.GetAsync();
+        DateOnly? earliestDeliveryDate = null;
+        if (minDeliveryDays != null)
+        {
+            var now = DateTime.UtcNow;
+            if (workingHours != null && TimeOnly.FromDateTime(now) > workingHours.StartTime)
+                earliestDeliveryDate = DateOnly.FromDateTime(now.Date.AddDays(minDeliveryDays.Days));
+            else
+                earliestDeliveryDate = DateOnly.FromDateTime(now.Date.AddDays(minDeliveryDays.Days - 1));
+        }
+
         var slots = payload.Reservations.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
@@ -138,6 +164,15 @@ public class OrdersController : ControllerBase
                 {
                     Success = false,
                     Message = "Reservations can only be made on working days."
+                });
+            }
+
+            if (earliestReservationDate.HasValue && DateOnly.FromDateTime(slot.StartTime) < earliestReservationDate.Value)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = $"Reservations must be at least {minBookingDays!.Days} day(s) in advance."
                 });
             }
 
@@ -220,6 +255,15 @@ public class OrdersController : ControllerBase
                 {
                     Success = false,
                     Message = "Deliveries can only be scheduled on working days."
+                });
+            }
+
+            if (earliestDeliveryDate.HasValue && DateOnly.FromDateTime(deliveryReq.DeliveryTime) < earliestDeliveryDate.Value)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = $"Deliveries must be at least {minDeliveryDays!.Days} day(s) in advance."
                 });
             }
 

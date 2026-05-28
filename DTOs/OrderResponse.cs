@@ -38,3 +38,9 @@ public class ProductReservationInfo
     public string ProductName { get; set; } = string.Empty;
     public int Quantity { get; set; }
 }
+
+public class ReservationSlotInfo
+{
+    public DateTime StartTime { get; set; }
+    public DateTime EndTime { get; set; }
+}

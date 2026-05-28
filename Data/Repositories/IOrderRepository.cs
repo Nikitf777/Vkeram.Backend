@@ -8,4 +8,5 @@ public interface IOrderRepository
     Task<Order> CreateAsync(Order order);
     Task<Order?> GetByIdAsync(int id);
     Task UpdateAsync(Order order);
+    Task<List<OrderReservation>> GetFutureReservationsAsync();
 }

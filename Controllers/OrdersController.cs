@@ -22,6 +22,18 @@ public class OrdersController : ControllerBase
         _productService = productService;
     }
 
+    [HttpGet("reservations")]
+    public async Task<ActionResult<List<ReservationSlotInfo>>> GetFutureReservations()
+    {
+        var reservations = await _orderRepo.GetFutureReservationsAsync();
+        var slots = reservations.Select(r => new ReservationSlotInfo
+        {
+            StartTime = r.StartTime,
+            EndTime = r.EndTime
+        }).ToList();
+        return Ok(slots);
+    }
+
     [HttpPost]
     public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] List<CreateOrderRequest> requests)
     {

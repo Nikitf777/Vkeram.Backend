@@ -8,4 +8,6 @@ public class MinimumBookingDays
 
     [Range(1, 365)]
     public int Days { get; set; }
+
+    public bool CountWorkingDaysOnly { get; set; }
 }

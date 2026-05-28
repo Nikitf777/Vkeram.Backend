@@ -11,4 +11,5 @@ public class MinimumDeliveryDaysInfo
 {
     public int Id { get; set; }
     public int Days { get; set; }
+    public bool CountWorkingDaysOnly { get; set; }
 }

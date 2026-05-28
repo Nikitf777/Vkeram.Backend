@@ -66,7 +66,8 @@ public static class DbInitializer
         {
             db.MinimumBookingDays.Add(new MinimumBookingDays
             {
-                Days = 1
+                Days = 1,
+                CountWorkingDaysOnly = false
             });
 
             await db.SaveChangesAsync();
@@ -76,7 +77,8 @@ public static class DbInitializer
         {
             db.MinimumDeliveryDays.Add(new MinimumDeliveryDays
             {
-                Days = 1
+                Days = 1,
+                CountWorkingDaysOnly = true
             });
 
             await db.SaveChangesAsync();

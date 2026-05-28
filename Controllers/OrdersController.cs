@@ -121,24 +121,12 @@ public class OrdersController : ControllerBase
         var minBookingDays = await _minBookingDaysRepo.GetAsync();
         DateOnly? earliestReservationDate = null;
         if (minBookingDays != null)
-        {
-            var now = DateTime.UtcNow;
-            if (workingHours != null && TimeOnly.FromDateTime(now) > workingHours.StartTime)
-                earliestReservationDate = DateOnly.FromDateTime(now.Date.AddDays(minBookingDays.Days));
-            else
-                earliestReservationDate = DateOnly.FromDateTime(now.Date.AddDays(minBookingDays.Days - 1));
-        }
+            earliestReservationDate = GetEarliestAllowedDate(DateTime.UtcNow, minBookingDays.Days, minBookingDays.CountWorkingDaysOnly, workingHours?.StartTime, workingDayNames);
 
         var minDeliveryDays = await _minDeliveryDaysRepo.GetAsync();
         DateOnly? earliestDeliveryDate = null;
         if (minDeliveryDays != null)
-        {
-            var now = DateTime.UtcNow;
-            if (workingHours != null && TimeOnly.FromDateTime(now) > workingHours.StartTime)
-                earliestDeliveryDate = DateOnly.FromDateTime(now.Date.AddDays(minDeliveryDays.Days));
-            else
-                earliestDeliveryDate = DateOnly.FromDateTime(now.Date.AddDays(minDeliveryDays.Days - 1));
-        }
+            earliestDeliveryDate = GetEarliestAllowedDate(DateTime.UtcNow, minDeliveryDays.Days, minDeliveryDays.CountWorkingDaysOnly, workingHours?.StartTime, workingDayNames);
 
         var slots = payload.Reservations.Select(r =>
         {
@@ -332,5 +320,28 @@ public class OrdersController : ControllerBase
                 }).ToList()
             }).ToList()
         });
+    }
+
+    private static DateOnly GetEarliestAllowedDate(DateTime now, int days, bool countWorkingDaysOnly, TimeOnly? workingHoursStart, HashSet<string> workingDayNames)
+    {
+        DateOnly startDate;
+        if (workingHoursStart != null && TimeOnly.FromDateTime(now) > workingHoursStart)
+            startDate = DateOnly.FromDateTime(now.Date.AddDays(1));
+        else
+            startDate = DateOnly.FromDateTime(now.Date);
+
+        if (!countWorkingDaysOnly)
+            return startDate.AddDays(days - 1);
+
+        var current = startDate;
+        var counted = 0;
+        while (counted < days)
+        {
+            if (workingDayNames.Contains(current.DayOfWeek.ToString()))
+                counted++;
+            if (counted < days)
+                current = current.AddDays(1);
+        }
+        return current;
     }
 }

@@ -402,7 +402,8 @@ public class AdminController : ControllerBase
             MinimumBookingDays = new MinimumBookingDaysInfo
             {
                 Id = minDays.Id,
-                Days = minDays.Days
+                Days = minDays.Days,
+                CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
             }
         });
     }
@@ -434,6 +435,7 @@ public class AdminController : ControllerBase
         }
 
         minDays.Days = request.Days;
+        minDays.CountWorkingDaysOnly = request.CountWorkingDaysOnly;
         await _minBookingDaysRepo.UpdateAsync(minDays);
 
         return Ok(new MinimumBookingDaysResponse
@@ -443,7 +445,8 @@ public class AdminController : ControllerBase
             MinimumBookingDays = new MinimumBookingDaysInfo
             {
                 Id = minDays.Id,
-                Days = minDays.Days
+                Days = minDays.Days,
+                CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
             }
         });
     }
@@ -471,7 +474,8 @@ public class AdminController : ControllerBase
             MinimumDeliveryDays = new MinimumDeliveryDaysInfo
             {
                 Id = minDays.Id,
-                Days = minDays.Days
+                Days = minDays.Days,
+                CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
             }
         });
     }
@@ -503,6 +507,7 @@ public class AdminController : ControllerBase
         }
 
         minDays.Days = request.Days;
+        minDays.CountWorkingDaysOnly = request.CountWorkingDaysOnly;
         await _minDeliveryDaysRepo.UpdateAsync(minDays);
 
         return Ok(new MinimumDeliveryDaysResponse
@@ -512,7 +517,8 @@ public class AdminController : ControllerBase
             MinimumDeliveryDays = new MinimumDeliveryDaysInfo
             {
                 Id = minDays.Id,
-                Days = minDays.Days
+                Days = minDays.Days,
+                CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
             }
         });
     }

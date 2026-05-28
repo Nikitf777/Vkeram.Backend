@@ -68,12 +68,12 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<MinimumBookingDays>(entity =>
         {
-            entity.HasData(new MinimumBookingDays { Id = 1, Days = 1 });
+            entity.HasData(new MinimumBookingDays { Id = 1, Days = 1, CountWorkingDaysOnly = false });
         });
 
         modelBuilder.Entity<MinimumDeliveryDays>(entity =>
         {
-            entity.HasData(new MinimumDeliveryDays { Id = 1, Days = 1 });
+            entity.HasData(new MinimumDeliveryDays { Id = 1, Days = 1, CountWorkingDaysOnly = false });
         });
     }
 }

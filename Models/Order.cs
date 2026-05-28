@@ -24,4 +24,6 @@ public class Order
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
 
     public List<OrderReservation> Reservations { get; set; } = new();
+
+    public List<OrderDelivery> Deliveries { get; set; } = new();
 }

@@ -11,6 +11,7 @@ public class AppDbContext : DbContext
     public DbSet<InviteCode> InviteCodes => Set<InviteCode>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderReservation> OrderReservations => Set<OrderReservation>();
+    public DbSet<OrderDelivery> OrderDeliveries => Set<OrderDelivery>();
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -39,9 +40,15 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => new { e.StartTime, e.EndTime });
         });
 
+        modelBuilder.Entity<OrderDelivery>(entity =>
+        {
+            entity.HasIndex(e => e.OrderId);
+        });
+
         modelBuilder.Entity<ProductReservation>(entity =>
         {
             entity.HasIndex(e => new { e.OrderReservationId, e.ProductId }).IsUnique();
+            entity.HasIndex(e => new { e.OrderDeliveryId, e.ProductId }).IsUnique();
         });
     }
 }

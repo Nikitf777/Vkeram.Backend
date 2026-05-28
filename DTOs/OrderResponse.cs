@@ -11,6 +11,7 @@ public class OrderResponse
     public int? UserId { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<ReservationInfo>? Reservations { get; set; }
+    public List<DeliveryInfo>? Deliveries { get; set; }
 }
 
 public class AdminOrderResponse
@@ -37,6 +38,12 @@ public class ProductReservationInfo
     public int ProductId { get; set; }
     public string ProductName { get; set; } = string.Empty;
     public int Quantity { get; set; }
+}
+
+public class DeliveryInfo
+{
+    public DateTime DeliveryTime { get; set; }
+    public List<ProductReservationInfo>? Products { get; set; }
 }
 
 public class ReservationSlotInfo

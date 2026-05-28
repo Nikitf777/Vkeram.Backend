@@ -35,21 +35,25 @@ public class OrdersController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] List<CreateOrderRequest> requests)
+    public async Task<ActionResult<OrderResponse>> CreateOrder([FromBody] CreateOrderPayload payload)
     {
         var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
 
-        if (requests.Count == 0)
+        if (payload.Reservations.Count == 0 && payload.Deliveries.Count == 0)
         {
             return BadRequest(new OrderResponse
             {
                 Success = false,
-                Message = "At least one reservation is required."
+                Message = "At least one reservation or one delivery is required."
             });
         }
 
-        var allProductIds = requests.SelectMany(r => r.Products.Select(p => p.ProductId)).Distinct().ToList();
+        var allProductIds = payload.Reservations
+            .SelectMany(r => r.Products.Select(p => p.ProductId))
+            .Concat(payload.Deliveries.SelectMany(d => d.Products.Select(p => p.ProductId)))
+            .Distinct().ToList();
         var existingProducts = await _productService.GetByIdsAsync(allProductIds);
+
         foreach (var unknownId in allProductIds.Where(id => !existingProducts.ContainsKey(id)))
         {
             return BadRequest(new OrderResponse
@@ -59,7 +63,7 @@ public class OrdersController : ControllerBase
             });
         }
 
-        foreach (var r in requests)
+        foreach (var r in payload.Reservations)
         {
             if (r.Products.Count == 0)
             {
@@ -80,7 +84,28 @@ public class OrdersController : ControllerBase
             }
         }
 
-        var slots = requests.Select(r =>
+        foreach (var d in payload.Deliveries)
+        {
+            if (d.Products.Count == 0)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Each delivery must have at least one product."
+                });
+            }
+
+            if (d.Products.GroupBy(p => p.ProductId).Any(g => g.Count() > 1))
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Duplicate products are not allowed within a delivery."
+                });
+            }
+        }
+
+        var slots = payload.Reservations.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
                 r.StartTime = DateTime.SpecifyKind(r.StartTime, DateTimeKind.Utc);
@@ -151,6 +176,28 @@ public class OrdersController : ControllerBase
             order.Reservations.Add(reservation);
         }
 
+        foreach (var deliveryReq in payload.Deliveries)
+        {
+            if (deliveryReq.DeliveryTime.Kind == DateTimeKind.Unspecified)
+                deliveryReq.DeliveryTime = DateTime.SpecifyKind(deliveryReq.DeliveryTime, DateTimeKind.Utc);
+
+            var delivery = new OrderDelivery
+            {
+                DeliveryTime = deliveryReq.DeliveryTime
+            };
+
+            foreach (var productReq in deliveryReq.Products)
+            {
+                delivery.ProductReservations.Add(new ProductReservation
+                {
+                    ProductId = productReq.ProductId,
+                    Quantity = productReq.Quantity
+                });
+            }
+
+            order.Deliveries.Add(delivery);
+        }
+
         await _orderRepo.CreateAsync(order);
 
         return Ok(new OrderResponse
@@ -168,6 +215,16 @@ public class OrdersController : ControllerBase
                 StartTime = r.StartTime,
                 EndTime = r.EndTime,
                 Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = existingProducts[pr.ProductId].Name,
+                    Quantity = pr.Quantity
+                }).ToList()
+            }).ToList(),
+            Deliveries = order.Deliveries.Select(d => new DeliveryInfo
+            {
+                DeliveryTime = d.DeliveryTime,
+                Products = d.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
                     ProductName = existingProducts[pr.ProductId].Name,

@@ -53,4 +53,17 @@ public class ProductService : IProductService
 
         return rawProducts.Select(r => new ProductDto { Id = r.Id, Name = r.Name }).ToList();
     }
+
+    public async Task<ProductDto?> GetByIdAsync(string id)
+    {
+        var response = await _httpClient.GetAsync(Uri.EscapeDataString(id));
+        response.EnsureSuccessStatusCode();
+
+        var rawProduct = await response.Content.ReadFromJsonAsync<RawProductDto>();
+
+        if (rawProduct == null)
+            return null;
+
+        return new ProductDto { Id = rawProduct.Id, Name = rawProduct.Name };
+    }
 }

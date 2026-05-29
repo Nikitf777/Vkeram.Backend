@@ -128,6 +128,33 @@ public class AdminController : ControllerBase
         return Ok(new { Success = true, Users = result });
     }
 
+    [HttpGet("users/{id}")]
+    public async Task<ActionResult> GetUser(
+        int id,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var user = await _userRepo.GetByIdAsync(id);
+        if (user == null)
+            return NotFound(new { Success = false, Message = "User not found." });
+
+        return Ok(new
+        {
+            Success = true,
+            User = new
+            {
+                user.Id,
+                user.CompanyName,
+                user.ContactEmail,
+                user.ContactName,
+                user.Phone,
+                user.CreatedAt,
+                user.IsActive
+            }
+        });
+    }
+
     [HttpGet("orders")]
     public async Task<ActionResult> GetOrders(
         [FromHeader(Name = "X-Admin-Key")] string adminKey)

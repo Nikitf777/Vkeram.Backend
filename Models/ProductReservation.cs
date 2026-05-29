@@ -16,7 +16,7 @@ public class ProductReservation
     [ForeignKey(nameof(OrderDeliveryId))]
     public OrderDelivery? OrderDelivery { get; set; }
 
-    public int ProductId { get; set; }
+    public string ProductId { get; set; } = string.Empty;
 
     public int Quantity { get; set; }
 }

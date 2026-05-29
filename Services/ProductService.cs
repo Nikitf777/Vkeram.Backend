@@ -17,7 +17,7 @@ public class ProductService : IProductService
         _httpClient = httpClient;
     }
 
-    public async Task<Dictionary<int, ProductDto>> GetByIdsAsync(IEnumerable<int> ids)
+    public async Task<Dictionary<string, ProductDto>> GetByIdsAsync(IEnumerable<string> ids)
     {
         var response = await _httpClient.GetAsync("");
         response.EnsureSuccessStatusCode();
@@ -25,16 +25,16 @@ public class ProductService : IProductService
         var rawProducts = await response.Content.ReadFromJsonAsync<List<RawProductDto>>();
 
         if (rawProducts == null)
-            return new Dictionary<int, ProductDto>();
+            return new Dictionary<string, ProductDto>();
 
         var idSet = ids.ToHashSet();
-        var result = new Dictionary<int, ProductDto>();
+        var result = new Dictionary<string, ProductDto>();
 
         foreach (var raw in rawProducts)
         {
-            if (int.TryParse(raw.Id, out var id) && idSet.Contains(id))
+            if (idSet.Contains(raw.Id))
             {
-                result[id] = new ProductDto { Id = id, Name = raw.Name };
+                result[raw.Id] = new ProductDto { Id = raw.Id, Name = raw.Name };
             }
         }
 

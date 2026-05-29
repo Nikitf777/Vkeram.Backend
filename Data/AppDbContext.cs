@@ -51,6 +51,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<ProductReservation>(entity =>
         {
+            entity.Property(e => e.ProductId).HasMaxLength(100);
             entity.HasIndex(e => new { e.OrderReservationId, e.ProductId }).IsUnique();
             entity.HasIndex(e => new { e.OrderDeliveryId, e.ProductId }).IsUnique();
         });

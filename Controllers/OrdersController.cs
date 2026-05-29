@@ -30,6 +30,59 @@ public class OrdersController : ControllerBase
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<OrderResponse>>> GetMyOrders()
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+
+        var orders = await _orderRepo.GetByUserIdAsync(userId);
+
+        var allProductIds = orders
+            .SelectMany(o => o.Reservations.SelectMany(r => r.ProductReservations.Select(p => p.ProductId)))
+            .Concat(orders.SelectMany(o => o.Deliveries.SelectMany(d => d.ProductReservations.Select(p => p.ProductId))))
+            .Distinct()
+            .ToList();
+
+        var productMap = allProductIds.Count > 0
+            ? await _productService.GetByIdsAsync(allProductIds)
+            : new Dictionary<string, ProductDto>();
+
+        var result = orders.Select(o => new OrderResponse
+        {
+            Success = true,
+            Message = "Order retrieved.",
+            OrderId = o.Id,
+            ConfirmationStatus = o.ConfirmationStatus,
+            PaymentStatus = o.PaymentStatus,
+            ShipmentStatus = o.ShipmentStatus,
+            UserId = o.UserId,
+            CreatedAt = o.CreatedAt,
+            Reservations = o.Reservations.Select(r => new ReservationInfo
+            {
+                StartTime = r.Day.ToDateTime(r.StartTime),
+                EndTime = r.Day.ToDateTime(r.EndTime),
+                Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                    Quantity = pr.Quantity
+                }).ToList()
+            }).ToList(),
+            Deliveries = o.Deliveries.Select(d => new DeliveryInfo
+            {
+                DeliveryTime = d.DeliveryTime,
+                Products = d.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                    Quantity = pr.Quantity
+                }).ToList()
+            }).ToList()
+        }).ToList();
+
+        return Ok(result);
+    }
+
     [HttpGet("reservations")]
     public async Task<ActionResult<List<ReservationSlotInfo>>> GetFutureReservations(
         [FromQuery] DateOnly? from = null,

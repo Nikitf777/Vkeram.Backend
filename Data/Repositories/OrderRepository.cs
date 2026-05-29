@@ -72,4 +72,16 @@ public class OrderRepository : IOrderRepository
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
     }
+
+    public async Task<List<Order>> GetByUserIdAsync(int userId)
+    {
+        return await _db.Orders
+            .Include(o => o.Reservations)
+                .ThenInclude(r => r.ProductReservations)
+            .Include(o => o.Deliveries)
+                .ThenInclude(d => d.ProductReservations)
+            .Where(o => o.UserId == userId)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
 }

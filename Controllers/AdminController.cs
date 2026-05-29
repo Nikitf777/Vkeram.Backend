@@ -16,9 +16,10 @@ public class AdminController : ControllerBase
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
+    private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -27,6 +28,7 @@ public class AdminController : ControllerBase
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
+        _userRepo = userRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -103,6 +105,50 @@ public class AdminController : ControllerBase
         }).ToList();
 
         return Ok(new { Success = true, Invites = invites });
+    }
+
+    [HttpGet("users")]
+    public async Task<ActionResult> GetUsers(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var users = await _userRepo.GetAllAsync();
+        var result = users.Select(u => new
+        {
+            u.Id,
+            u.CompanyName,
+            u.ContactEmail,
+            u.ContactName,
+            u.Phone,
+            u.CreatedAt,
+            u.IsActive
+        }).ToList();
+
+        return Ok(new { Success = true, Users = result });
+    }
+
+    [HttpGet("orders")]
+    public async Task<ActionResult> GetOrders(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var orders = await _orderRepo.GetAllAsync();
+        var result = orders.Select(o => new
+        {
+            o.Id,
+            UserCompany = o.User.CompanyName,
+            UserEmail = o.User.ContactEmail,
+            o.ConfirmationStatus,
+            o.PaymentStatus,
+            o.ShipmentStatus,
+            o.CreatedAt,
+            ReservationsCount = o.Reservations.Count,
+            DeliveriesCount = o.Deliveries.Count
+        }).ToList();
+
+        return Ok(new { Success = true, Orders = result });
     }
 
     private bool IsValidAdmin(string adminKey) => adminKey == _adminKey;

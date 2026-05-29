@@ -60,4 +60,16 @@ public class OrderRepository : IOrderRepository
             .ThenBy(r => r.StartTime)
             .ToListAsync();
     }
+
+    public async Task<List<Order>> GetAllAsync()
+    {
+        return await _db.Orders
+            .Include(o => o.User)
+            .Include(o => o.Reservations)
+                .ThenInclude(r => r.ProductReservations)
+            .Include(o => o.Deliveries)
+                .ThenInclude(d => d.ProductReservations)
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
 }

@@ -28,4 +28,9 @@ public class UserRepository : IUserRepository
         await _db.SaveChangesAsync();
         return user;
     }
+
+    public async Task<List<User>> GetAllAsync()
+    {
+        return await _db.Users.OrderBy(u => u.Id).ToListAsync();
+    }
 }

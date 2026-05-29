@@ -12,9 +12,9 @@ public class OrderRepository : IOrderRepository
         _db = db;
     }
 
-    public async Task<bool> HasOverlappingReservationAsync(DateTime startTime, DateTime endTime)
+    public async Task<bool> HasOverlappingReservationAsync(DateOnly day, TimeOnly startTime, TimeOnly endTime)
     {
-        return await _db.OrderReservations.AnyAsync(r => r.StartTime < endTime && startTime < r.EndTime);
+        return await _db.OrderReservations.AnyAsync(r => r.Day == day && r.StartTime < endTime && startTime < r.EndTime);
     }
 
     public async Task<Order> CreateAsync(Order order)
@@ -37,10 +37,15 @@ public class OrderRepository : IOrderRepository
 
     public async Task<List<OrderReservation>> GetFutureReservationsAsync()
     {
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        var currentTime = TimeOnly.FromDateTime(now);
+
         return await _db.OrderReservations
             .Include(r => r.Order)
-            .Where(r => r.StartTime >= DateTime.UtcNow && r.Order.ConfirmationStatus != "Cancelled")
-            .OrderBy(r => r.StartTime)
+            .Where(r => (r.Day > today || (r.Day == today && r.StartTime >= currentTime)) && r.Order.ConfirmationStatus != "Cancelled")
+            .OrderBy(r => r.Day)
+            .ThenBy(r => r.StartTime)
             .ToListAsync();
     }
 }

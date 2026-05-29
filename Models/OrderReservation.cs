@@ -11,9 +11,11 @@ public class OrderReservation
     [ForeignKey(nameof(OrderId))]
     public Order Order { get; set; } = null!;
 
-    public DateTime StartTime { get; set; }
+    public DateOnly Day { get; set; }
 
-    public DateTime EndTime { get; set; }
+    public TimeOnly StartTime { get; set; }
+
+    public TimeOnly EndTime { get; set; }
 
     public List<ProductReservation> ProductReservations { get; set; } = new();
 }

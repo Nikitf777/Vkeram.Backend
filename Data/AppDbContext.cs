@@ -41,7 +41,7 @@ public class AppDbContext : DbContext
 
         modelBuilder.Entity<OrderReservation>(entity =>
         {
-            entity.HasIndex(e => new { e.StartTime, e.EndTime });
+            entity.HasIndex(e => new { e.Day, e.StartTime, e.EndTime });
         });
 
         modelBuilder.Entity<OrderDelivery>(entity =>

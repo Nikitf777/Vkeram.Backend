@@ -36,8 +36,8 @@ public class OrdersController : ControllerBase
         var reservations = await _orderRepo.GetFutureReservationsAsync();
         var slots = reservations.Select(r => new ReservationSlotInfo
         {
-            StartTime = r.StartTime,
-            EndTime = r.EndTime
+            StartTime = r.Day.ToDateTime(r.StartTime),
+            EndTime = r.Day.ToDateTime(r.EndTime)
         }).ToList();
         return Ok(slots);
     }
@@ -132,12 +132,19 @@ public class OrdersController : ControllerBase
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
                 r.StartTime = DateTime.SpecifyKind(r.StartTime, DateTimeKind.Utc);
-            return (StartTime: r.StartTime, EndTime: r.StartTime.AddMinutes(30), Products: r.Products);
+            var day = DateOnly.FromDateTime(r.StartTime);
+            var startTime = TimeOnly.FromDateTime(r.StartTime);
+            var endTime = startTime.Add(new TimeSpan(0, 30, 0));
+            return (Day: day, StartTime: startTime, EndTime: endTime, Products: r.Products);
         }).ToList();
+
+        var now = DateTime.UtcNow;
+        var today = DateOnly.FromDateTime(now);
+        var currentTime = TimeOnly.FromDateTime(now);
 
         foreach (var slot in slots)
         {
-            if (slot.StartTime <= DateTime.UtcNow)
+            if (slot.Day < today || (slot.Day == today && slot.StartTime <= currentTime))
             {
                 return BadRequest(new OrderResponse
                 {
@@ -146,7 +153,7 @@ public class OrdersController : ControllerBase
                 });
             }
 
-            if (!workingDayNames.Contains(slot.StartTime.DayOfWeek.ToString()))
+            if (!workingDayNames.Contains(slot.Day.DayOfWeek.ToString()))
             {
                 return BadRequest(new OrderResponse
                 {
@@ -155,7 +162,7 @@ public class OrdersController : ControllerBase
                 });
             }
 
-            if (earliestReservationDate.HasValue && DateOnly.FromDateTime(slot.StartTime) < earliestReservationDate.Value)
+            if (earliestReservationDate.HasValue && slot.Day < earliestReservationDate.Value)
             {
                 return BadRequest(new OrderResponse
                 {
@@ -166,10 +173,7 @@ public class OrdersController : ControllerBase
 
             if (workingHours != null)
             {
-                var slotStart = TimeOnly.FromDateTime(slot.StartTime);
-                var slotEnd = TimeOnly.FromDateTime(slot.EndTime);
-
-                if (slotStart < workingHours.StartTime || slotEnd > workingHours.EndTime)
+                if (slot.StartTime < workingHours.StartTime || slot.EndTime > workingHours.EndTime)
                 {
                     return BadRequest(new OrderResponse
                     {
@@ -179,7 +183,7 @@ public class OrdersController : ControllerBase
                 }
             }
 
-            if (await _orderRepo.HasOverlappingReservationAsync(slot.StartTime, slot.EndTime))
+            if (await _orderRepo.HasOverlappingReservationAsync(slot.Day, slot.StartTime, slot.EndTime))
             {
                 return BadRequest(new OrderResponse
                 {
@@ -193,7 +197,7 @@ public class OrdersController : ControllerBase
         {
             for (int j = i + 1; j < slots.Count; j++)
             {
-                if (slots[i].StartTime < slots[j].EndTime && slots[j].StartTime < slots[i].EndTime)
+                if (slots[i].Day == slots[j].Day && slots[i].StartTime < slots[j].EndTime && slots[j].StartTime < slots[i].EndTime)
                 {
                     return BadRequest(new OrderResponse
                     {
@@ -216,6 +220,7 @@ public class OrdersController : ControllerBase
         {
             var reservation = new OrderReservation
             {
+                Day = slot.Day,
                 StartTime = slot.StartTime,
                 EndTime = slot.EndTime
             };
@@ -300,8 +305,8 @@ public class OrdersController : ControllerBase
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r => new ReservationInfo
             {
-                StartTime = r.StartTime,
-                EndTime = r.EndTime,
+                StartTime = r.Day.ToDateTime(r.StartTime),
+                EndTime = r.Day.ToDateTime(r.EndTime),
                 Products = r.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,

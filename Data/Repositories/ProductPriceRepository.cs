@@ -34,4 +34,12 @@ public class ProductPriceRepository : IProductPriceRepository
             .OrderByDescending(p => p.CreatedAt)
             .FirstOrDefaultAsync();
     }
+
+    public async Task<List<ProductPrice>> GetHistoryForProductAsync(string productId)
+    {
+        return await _db.ProductPrices
+            .Where(p => p.ProductId == productId)
+            .OrderByDescending(p => p.CreatedAt)
+            .ToListAsync();
+    }
 }

@@ -671,4 +671,23 @@ public class AdminController : ControllerBase
             }
         });
     }
+
+    [HttpGet("products/{productId}/prices")]
+    public async Task<ActionResult> GetProductPriceHistory(
+        string productId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var prices = await _productPriceRepo.GetHistoryForProductAsync(productId);
+        var result = prices.Select(p => new
+        {
+            p.Id,
+            p.ProductId,
+            p.Price,
+            p.CreatedAt
+        }).ToList();
+
+        return Ok(new { Success = true, Prices = result });
+    }
 }

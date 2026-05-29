@@ -17,6 +17,7 @@ public class AppDbContext : DbContext
     public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
     public DbSet<MinimumBookingDays> MinimumBookingDays => Set<MinimumBookingDays>();
     public DbSet<MinimumDeliveryDays> MinimumDeliveryDays => Set<MinimumDeliveryDays>();
+    public DbSet<ProductPrice> ProductPrices => Set<ProductPrice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -75,6 +76,13 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MinimumDeliveryDays>(entity =>
         {
             entity.HasData(new MinimumDeliveryDays { Id = 1, Days = 1, CountWorkingDaysOnly = false });
+        });
+
+        modelBuilder.Entity<ProductPrice>(entity =>
+        {
+            entity.Property(e => e.ProductId).HasMaxLength(100);
+            entity.Property(e => e.Price).HasColumnType("decimal(18,2)");
+            entity.HasIndex(e => new { e.ProductId, e.CreatedAt });
         });
     }
 }

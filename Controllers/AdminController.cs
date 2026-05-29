@@ -15,9 +15,10 @@ public class AdminController : ControllerBase
     private readonly IWorkingHoursRepository _workingHoursRepo;
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
+    private readonly IProductPriceRepository _productPriceRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -25,6 +26,7 @@ public class AdminController : ControllerBase
         _workingHoursRepo = workingHoursRepo;
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
+        _productPriceRepo = productPriceRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -519,6 +521,54 @@ public class AdminController : ControllerBase
                 Id = minDays.Id,
                 Days = minDays.Days,
                 CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpPost("product-prices")]
+    public async Task<ActionResult<ProductPriceResponse>> AddProductPrice(
+        [FromBody] AddProductPriceRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (string.IsNullOrWhiteSpace(request.ProductId))
+        {
+            return BadRequest(new ProductPriceResponse
+            {
+                Success = false,
+                Message = "Product ID is required."
+            });
+        }
+
+        if (request.Price < 0)
+        {
+            return BadRequest(new ProductPriceResponse
+            {
+                Success = false,
+                Message = "Price must be non-negative."
+            });
+        }
+
+        var price = new ProductPrice
+        {
+            ProductId = request.ProductId,
+            Price = request.Price,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        await _productPriceRepo.AddAsync(price);
+
+        return Ok(new ProductPriceResponse
+        {
+            Success = true,
+            Message = "Product price added.",
+            ProductPrice = new ProductPriceInfo
+            {
+                Id = price.Id,
+                ProductId = price.ProductId,
+                Price = price.Price,
+                CreatedAt = price.CreatedAt
             }
         });
     }

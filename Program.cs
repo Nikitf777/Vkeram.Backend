@@ -18,6 +18,7 @@ builder.Services.AddScoped<IWorkDayRepository, WorkDayRepository>();
 builder.Services.AddScoped<IWorkingHoursRepository, WorkingHoursRepository>();
 builder.Services.AddScoped<IMinimumBookingDaysRepository, MinimumBookingDaysRepository>();
 builder.Services.AddScoped<IMinimumDeliveryDaysRepository, MinimumDeliveryDaysRepository>();
+builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
 {

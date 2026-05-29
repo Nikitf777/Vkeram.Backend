@@ -17,10 +17,11 @@ public class AdminController : ControllerBase
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
+    private readonly IProductCharacteristicRepository _productCharacteristicRepo;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -30,6 +31,7 @@ public class AdminController : ControllerBase
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
+        _productCharacteristicRepo = productCharacteristicRepo;
         _userRepo = userRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
@@ -748,4 +750,94 @@ public class AdminController : ControllerBase
 
         return Ok(new { Success = true, Message = "Image deleted." });
     }
+
+    [HttpPut("products/{productId}/characteristics")]
+    public async Task<ActionResult> SaveProductCharacteristic(
+        string productId,
+        [FromBody] SaveProductCharacteristicRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var existing = await _productCharacteristicRepo.GetByProductIdAsync(productId);
+
+        if (existing == null)
+        {
+            var characteristic = new ProductCharacteristic
+            {
+                ProductId = productId,
+                SizeLengthMm = request.SizeLengthMm,
+                SizeWidthMm = request.SizeWidthMm,
+                SizeHeightMm = request.SizeHeightMm,
+                WeightKg = request.WeightKg,
+                StrengthGrade = request.StrengthGrade,
+                FrostResistance = request.FrostResistance,
+                WaterAbsorption = request.WaterAbsorption,
+                ThermalConductivity = request.ThermalConductivity,
+                RadiationQuality = request.RadiationQuality,
+                QuantityPerPallet = request.QuantityPerPallet,
+                Standard = request.Standard,
+                Color = request.Color,
+                BrickType = request.BrickType,
+                MinimumOrderQuantity = request.MinimumOrderQuantity
+            };
+
+            await _productCharacteristicRepo.CreateAsync(characteristic);
+
+            return Ok(new { Success = true, Message = "Characteristics created.", Characteristics = MapCharacteristicToDto(characteristic) });
+        }
+
+        existing.SizeLengthMm = request.SizeLengthMm;
+        existing.SizeWidthMm = request.SizeWidthMm;
+        existing.SizeHeightMm = request.SizeHeightMm;
+        existing.WeightKg = request.WeightKg;
+        existing.StrengthGrade = request.StrengthGrade;
+        existing.FrostResistance = request.FrostResistance;
+        existing.WaterAbsorption = request.WaterAbsorption;
+        existing.ThermalConductivity = request.ThermalConductivity;
+        existing.RadiationQuality = request.RadiationQuality;
+        existing.QuantityPerPallet = request.QuantityPerPallet;
+        existing.Standard = request.Standard;
+        existing.Color = request.Color;
+        existing.BrickType = request.BrickType;
+        existing.MinimumOrderQuantity = request.MinimumOrderQuantity;
+
+        await _productCharacteristicRepo.UpdateAsync(existing);
+
+        return Ok(new { Success = true, Message = "Characteristics updated.", Characteristics = MapCharacteristicToDto(existing) });
+    }
+
+    [HttpDelete("products/{productId}/characteristics")]
+    public async Task<ActionResult> DeleteProductCharacteristic(
+        string productId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var deleted = await _productCharacteristicRepo.DeleteByProductIdAsync(productId);
+        if (!deleted)
+            return NotFound(new { Success = false, Message = "Characteristics not found." });
+
+        return Ok(new { Success = true, Message = "Characteristics deleted." });
+    }
+
+    private static ProductCharacteristicDto MapCharacteristicToDto(ProductCharacteristic c) => new()
+    {
+        Id = c.Id,
+        ProductId = c.ProductId,
+        SizeLengthMm = c.SizeLengthMm,
+        SizeWidthMm = c.SizeWidthMm,
+        SizeHeightMm = c.SizeHeightMm,
+        WeightKg = c.WeightKg,
+        StrengthGrade = c.StrengthGrade,
+        FrostResistance = c.FrostResistance,
+        WaterAbsorption = c.WaterAbsorption,
+        ThermalConductivity = c.ThermalConductivity,
+        RadiationQuality = c.RadiationQuality,
+        QuantityPerPallet = c.QuantityPerPallet,
+        Standard = c.Standard,
+        Color = c.Color,
+        BrickType = c.BrickType,
+        MinimumOrderQuantity = c.MinimumOrderQuantity
+    };
 }

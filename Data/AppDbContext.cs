@@ -19,6 +19,7 @@ public class AppDbContext : DbContext
     public DbSet<MinimumDeliveryDays> MinimumDeliveryDays => Set<MinimumDeliveryDays>();
     public DbSet<ProductPrice> ProductPrices => Set<ProductPrice>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -92,6 +93,19 @@ public class AppDbContext : DbContext
             entity.Property(e => e.FileName).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
             entity.HasIndex(e => e.ProductId);
+        });
+
+        modelBuilder.Entity<ProductCharacteristic>(entity =>
+        {
+            entity.Property(e => e.ProductId).HasMaxLength(100);
+            entity.Property(e => e.StrengthGrade).HasMaxLength(100);
+            entity.Property(e => e.FrostResistance).HasMaxLength(100);
+            entity.Property(e => e.WaterAbsorption).HasMaxLength(100);
+            entity.Property(e => e.RadiationQuality).HasMaxLength(100);
+            entity.Property(e => e.Standard).HasMaxLength(200);
+            entity.Property(e => e.Color).HasMaxLength(100);
+            entity.Property(e => e.BrickType).HasMaxLength(100);
+            entity.HasIndex(e => e.ProductId).IsUnique();
         });
     }
 }

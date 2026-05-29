@@ -28,6 +28,7 @@ builder.Services.AddScoped<IMinimumBookingDaysRepository, MinimumBookingDaysRepo
 builder.Services.AddScoped<IMinimumDeliveryDaysRepository, MinimumDeliveryDaysRepository>();
 builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
+builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
 {

@@ -40,4 +40,17 @@ public class ProductService : IProductService
 
         return result;
     }
+
+    public async Task<List<ProductDto>> GetAllAsync()
+    {
+        var response = await _httpClient.GetAsync("");
+        response.EnsureSuccessStatusCode();
+
+        var rawProducts = await response.Content.ReadFromJsonAsync<List<RawProductDto>>();
+
+        if (rawProducts == null)
+            return new List<ProductDto>();
+
+        return rawProducts.Select(r => new ProductDto { Id = r.Id, Name = r.Name }).ToList();
+    }
 }

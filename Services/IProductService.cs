@@ -9,4 +9,5 @@ public class ProductDto
 public interface IProductService
 {
     Task<Dictionary<string, ProductDto>> GetByIdsAsync(IEnumerable<string> ids);
+    Task<List<ProductDto>> GetAllAsync();
 }

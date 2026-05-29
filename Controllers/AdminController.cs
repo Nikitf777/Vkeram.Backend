@@ -155,6 +155,32 @@ public class AdminController : ControllerBase
         });
     }
 
+    [HttpGet("users/{userId}/orders")]
+    public async Task<ActionResult> GetUserOrders(
+        int userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var user = await _userRepo.GetByIdAsync(userId);
+        if (user == null)
+            return NotFound(new { Success = false, Message = "User not found." });
+
+        var orders = await _orderRepo.GetByUserIdAsync(userId);
+        var result = orders.Select(o => new
+        {
+            o.Id,
+            o.ConfirmationStatus,
+            o.PaymentStatus,
+            o.ShipmentStatus,
+            o.CreatedAt,
+            ReservationsCount = o.Reservations.Count,
+            DeliveriesCount = o.Deliveries.Count
+        }).ToList();
+
+        return Ok(new { Success = true, Orders = result });
+    }
+
     [HttpGet("orders")]
     public async Task<ActionResult> GetOrders(
         [FromHeader(Name = "X-Admin-Key")] string adminKey)

@@ -31,9 +31,31 @@ public class OrdersController : ControllerBase
     }
 
     [HttpGet("reservations")]
-    public async Task<ActionResult<List<ReservationSlotInfo>>> GetFutureReservations()
+    public async Task<ActionResult<List<ReservationSlotInfo>>> GetFutureReservations(
+        [FromQuery] DateOnly? from = null,
+        [FromQuery] DateOnly? to = null)
     {
-        var reservations = await _orderRepo.GetFutureReservationsAsync();
+        if (from.HasValue && to.HasValue && from.Value > to.Value)
+        {
+            return BadRequest(new { Success = false, Message = "'from' must not be later than 'to'." });
+        }
+
+        if (from.HasValue)
+        {
+            var today = DateOnly.FromDateTime(DateTime.UtcNow);
+            if (from.Value < today)
+            {
+                return BadRequest(new { Success = false, Message = "'from' must not be in the past." });
+            }
+
+            var workingHours = await _workingHoursRepo.GetAsync();
+            if (from.Value == today && workingHours != null && TimeOnly.FromDateTime(DateTime.UtcNow) > workingHours.StartTime)
+            {
+                return BadRequest(new { Success = false, Message = "'from' cannot be today because working hours have already started." });
+            }
+        }
+
+        var reservations = await _orderRepo.GetFutureReservationsAsync(from, to);
         var slots = reservations.Select(r => new ReservationSlotInfo
         {
             StartTime = r.Day.ToDateTime(r.StartTime),

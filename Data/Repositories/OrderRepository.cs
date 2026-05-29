@@ -35,15 +35,27 @@ public class OrderRepository : IOrderRepository
         await _db.SaveChangesAsync();
     }
 
-    public async Task<List<OrderReservation>> GetFutureReservationsAsync()
+    public async Task<List<OrderReservation>> GetFutureReservationsAsync(DateOnly? from = null, DateOnly? to = null)
     {
-        var now = DateTime.UtcNow;
-        var today = DateOnly.FromDateTime(now);
-        var currentTime = TimeOnly.FromDateTime(now);
-
-        return await _db.OrderReservations
+        var query = _db.OrderReservations
             .Include(r => r.Order)
-            .Where(r => (r.Day > today || (r.Day == today && r.StartTime >= currentTime)) && r.Order.ConfirmationStatus != "Cancelled")
+            .Where(r => r.Order.ConfirmationStatus != "Cancelled")
+            .AsQueryable();
+
+        if (from.HasValue)
+            query = query.Where(r => r.Day >= from.Value);
+        else
+        {
+            var now = DateTime.UtcNow;
+            var today = DateOnly.FromDateTime(now);
+            var currentTime = TimeOnly.FromDateTime(now);
+            query = query.Where(r => r.Day > today || (r.Day == today && r.StartTime >= currentTime));
+        }
+
+        if (to.HasValue)
+            query = query.Where(r => r.Day <= to.Value);
+
+        return await query
             .OrderBy(r => r.Day)
             .ThenBy(r => r.StartTime)
             .ToListAsync();

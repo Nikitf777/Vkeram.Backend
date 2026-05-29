@@ -16,10 +16,11 @@ public class AdminController : ControllerBase
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
+    private readonly IProductImageRepository _productImageRepo;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -28,6 +29,7 @@ public class AdminController : ControllerBase
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
+        _productImageRepo = productImageRepo;
         _userRepo = userRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
@@ -689,5 +691,61 @@ public class AdminController : ControllerBase
         }).ToList();
 
         return Ok(new { Success = true, Prices = result });
+    }
+
+    [HttpPost("products/{productId}/images")]
+    public async Task<ActionResult> UploadProductImage(
+        string productId,
+        IFormFile file,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (file == null || file.Length == 0)
+            return BadRequest(new { Success = false, Message = "File is required." });
+
+        using var ms = new MemoryStream();
+        await file.CopyToAsync(ms);
+
+        var image = new ProductImage
+        {
+            ProductId = productId,
+            FileName = file.FileName,
+            ContentType = file.ContentType,
+            ImageData = ms.ToArray()
+        };
+
+        await _productImageRepo.AddAsync(image);
+
+        return Ok(new
+        {
+            Success = true,
+            Message = "Image uploaded.",
+            Image = new
+            {
+                image.Id,
+                image.ProductId,
+                image.FileName,
+                image.ContentType,
+                image.CreatedAt
+            }
+        });
+    }
+
+    [HttpDelete("products/{productId}/images/{imageId}")]
+    public async Task<ActionResult> DeleteProductImage(
+        string productId,
+        int imageId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var image = await _productImageRepo.GetByIdAsync(imageId);
+        if (image == null || image.ProductId != productId)
+            return NotFound(new { Success = false, Message = "Image not found." });
+
+        await _productImageRepo.DeleteAsync(image);
+
+        return Ok(new { Success = true, Message = "Image deleted." });
     }
 }

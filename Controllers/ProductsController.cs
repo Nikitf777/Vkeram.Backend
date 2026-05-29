@@ -11,11 +11,13 @@ public class ProductsController : ControllerBase
 {
     private readonly IProductService _productService;
     private readonly IProductPriceRepository _productPriceRepo;
+    private readonly IProductImageRepository _productImageRepo;
 
-    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo)
+    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo)
     {
         _productService = productService;
         _productPriceRepo = productPriceRepo;
+        _productImageRepo = productImageRepo;
     }
 
     [HttpGet]
@@ -53,5 +55,31 @@ public class ProductsController : ControllerBase
         };
 
         return Ok(result);
+    }
+
+    [HttpGet("{productId}/images")]
+    public async Task<IActionResult> GetImages(string productId)
+    {
+        var images = await _productImageRepo.GetByProductIdAsync(productId);
+        var result = images.Select(i => new
+        {
+            i.Id,
+            i.ProductId,
+            i.FileName,
+            i.ContentType,
+            i.CreatedAt
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    [HttpGet("{productId}/images/{imageId}/file")]
+    public async Task<IActionResult> GetImageFile(string productId, int imageId)
+    {
+        var image = await _productImageRepo.GetByIdAsync(imageId);
+        if (image == null || image.ProductId != productId)
+            return NotFound();
+
+        return File(image.ImageData, image.ContentType, image.FileName);
     }
 }

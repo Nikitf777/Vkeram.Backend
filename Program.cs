@@ -26,6 +26,8 @@ builder.Services.AddScoped<IWorkDayRepository, WorkDayRepository>();
 builder.Services.AddScoped<IWorkingHoursRepository, WorkingHoursRepository>();
 builder.Services.AddScoped<IMinimumBookingDaysRepository, MinimumBookingDaysRepository>();
 builder.Services.AddScoped<IMinimumDeliveryDaysRepository, MinimumDeliveryDaysRepository>();
+builder.Services.AddScoped<IMaximumBookingDaysRepository, MaximumBookingDaysRepository>();
+builder.Services.AddScoped<IMaximumDeliveryDaysRepository, MaximumDeliveryDaysRepository>();
 builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();

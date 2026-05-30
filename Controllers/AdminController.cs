@@ -14,21 +14,25 @@ public class AdminController : ControllerBase
     private readonly IWorkDayRepository _workDayRepo;
     private readonly IWorkingHoursRepository _workingHoursRepo;
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
+    private readonly IMaximumBookingDaysRepository _maxBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
+    private readonly IMaximumDeliveryDaysRepository _maxDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
         _workDayRepo = workDayRepo;
         _workingHoursRepo = workingHoursRepo;
         _minBookingDaysRepo = minBookingDaysRepo;
+        _maxBookingDaysRepo = maxBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
+        _maxDeliveryDaysRepo = maxDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -624,6 +628,150 @@ public class AdminController : ControllerBase
                 Id = minDays.Id,
                 Days = minDays.Days,
                 CountWorkingDaysOnly = minDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpGet("maximum-booking-days")]
+    public async Task<ActionResult<MaximumBookingDaysResponse>> GetMaximumBookingDays(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var maxDays = await _maxBookingDaysRepo.GetAsync();
+        if (maxDays == null)
+        {
+            return NotFound(new MaximumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Maximum booking days not configured."
+            });
+        }
+
+        return Ok(new MaximumBookingDaysResponse
+        {
+            Success = true,
+            Message = "Maximum booking days retrieved.",
+            MaximumBookingDays = new MaximumBookingDaysInfo
+            {
+                Id = maxDays.Id,
+                Days = maxDays.Days,
+                CountWorkingDaysOnly = maxDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpPatch("maximum-booking-days")]
+    public async Task<ActionResult<MaximumBookingDaysResponse>> UpdateMaximumBookingDays(
+        [FromBody] UpdateMaximumBookingDaysRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.Days < 1 || request.Days > 365)
+        {
+            return BadRequest(new MaximumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Days must be between 1 and 365."
+            });
+        }
+
+        var maxDays = await _maxBookingDaysRepo.GetAsync();
+        if (maxDays == null)
+        {
+            return NotFound(new MaximumBookingDaysResponse
+            {
+                Success = false,
+                Message = "Maximum booking days not configured."
+            });
+        }
+
+        maxDays.Days = request.Days;
+        maxDays.CountWorkingDaysOnly = request.CountWorkingDaysOnly;
+        await _maxBookingDaysRepo.UpdateAsync(maxDays);
+
+        return Ok(new MaximumBookingDaysResponse
+        {
+            Success = true,
+            Message = "Maximum booking days updated.",
+            MaximumBookingDays = new MaximumBookingDaysInfo
+            {
+                Id = maxDays.Id,
+                Days = maxDays.Days,
+                CountWorkingDaysOnly = maxDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpGet("maximum-delivery-days")]
+    public async Task<ActionResult<MaximumDeliveryDaysResponse>> GetMaximumDeliveryDays(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var maxDays = await _maxDeliveryDaysRepo.GetAsync();
+        if (maxDays == null)
+        {
+            return NotFound(new MaximumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Maximum delivery days not configured."
+            });
+        }
+
+        return Ok(new MaximumDeliveryDaysResponse
+        {
+            Success = true,
+            Message = "Maximum delivery days retrieved.",
+            MaximumDeliveryDays = new MaximumDeliveryDaysInfo
+            {
+                Id = maxDays.Id,
+                Days = maxDays.Days,
+                CountWorkingDaysOnly = maxDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpPatch("maximum-delivery-days")]
+    public async Task<ActionResult<MaximumDeliveryDaysResponse>> UpdateMaximumDeliveryDays(
+        [FromBody] UpdateMaximumDeliveryDaysRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.Days < 1 || request.Days > 365)
+        {
+            return BadRequest(new MaximumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Days must be between 1 and 365."
+            });
+        }
+
+        var maxDays = await _maxDeliveryDaysRepo.GetAsync();
+        if (maxDays == null)
+        {
+            return NotFound(new MaximumDeliveryDaysResponse
+            {
+                Success = false,
+                Message = "Maximum delivery days not configured."
+            });
+        }
+
+        maxDays.Days = request.Days;
+        maxDays.CountWorkingDaysOnly = request.CountWorkingDaysOnly;
+        await _maxDeliveryDaysRepo.UpdateAsync(maxDays);
+
+        return Ok(new MaximumDeliveryDaysResponse
+        {
+            Success = true,
+            Message = "Maximum delivery days updated.",
+            MaximumDeliveryDays = new MaximumDeliveryDaysInfo
+            {
+                Id = maxDays.Id,
+                Days = maxDays.Days,
+                CountWorkingDaysOnly = maxDays.CountWorkingDaysOnly
             }
         });
     }

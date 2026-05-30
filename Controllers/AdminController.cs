@@ -639,6 +639,7 @@ public class AdminController : ControllerBase
         }
 
         var allBreaks = await _breakRepo.GetAllAsync();
+
         foreach (var b in allBreaks)
         {
             if (startTime < b.EndTime && endTime > b.StartTime)
@@ -655,6 +656,27 @@ public class AdminController : ControllerBase
                 {
                     Success = false,
                     Message = "Breaks must not be directly adjacent to each other."
+                });
+            }
+        }
+
+        var workingHours = await _workingHoursRepo.GetAsync();
+        if (workingHours != null)
+        {
+            if (startTime <= workingHours.StartTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break start time must not be earlier than working hours start."
+                });
+            }
+            if (endTime >= workingHours.EndTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break end time must not be later than working hours end."
                 });
             }
         }
@@ -716,6 +738,7 @@ public class AdminController : ControllerBase
         }
 
         var allBreaks = await _breakRepo.GetAllAsync();
+
         foreach (var b in allBreaks)
         {
             if (b.Id == id) continue;
@@ -733,6 +756,27 @@ public class AdminController : ControllerBase
                 {
                     Success = false,
                     Message = "Breaks must not be directly adjacent to each other."
+                });
+            }
+        }
+
+        var workingHours = await _workingHoursRepo.GetAsync();
+        if (workingHours != null)
+        {
+            if (startTime <= workingHours.StartTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break start time must not be earlier than working hours start."
+                });
+            }
+            if (endTime >= workingHours.EndTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break end time must not be later than working hours end."
                 });
             }
         }
@@ -1068,34 +1112,6 @@ public class AdminController : ControllerBase
         });
     }
 
-    [HttpGet("allow-booking")]
-    public async Task<ActionResult<AllowBookingResponse>> GetAllowBooking(
-        [FromHeader(Name = "X-Admin-Key")] string adminKey)
-    {
-        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
-
-        var allowBooking = await _allowBookingRepo.GetAsync();
-        if (allowBooking == null)
-        {
-            return NotFound(new AllowBookingResponse
-            {
-                Success = false,
-                Message = "Allow booking not configured."
-            });
-        }
-
-        return Ok(new AllowBookingResponse
-        {
-            Success = true,
-            Message = "Allow booking retrieved.",
-            AllowBooking = new AllowBookingInfo
-            {
-                Id = allowBooking.Id,
-                IsAllowed = allowBooking.IsAllowed
-            }
-        });
-    }
-
     [HttpPatch("allow-booking")]
     public async Task<ActionResult<AllowBookingResponse>> UpdateAllowBooking(
         [FromBody] UpdateAllowBookingRequest request,
@@ -1124,34 +1140,6 @@ public class AdminController : ControllerBase
             {
                 Id = allowBooking.Id,
                 IsAllowed = allowBooking.IsAllowed
-            }
-        });
-    }
-
-    [HttpGet("allow-delivery")]
-    public async Task<ActionResult<AllowDeliveryResponse>> GetAllowDelivery(
-        [FromHeader(Name = "X-Admin-Key")] string adminKey)
-    {
-        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
-
-        var allowDelivery = await _allowDeliveryRepo.GetAsync();
-        if (allowDelivery == null)
-        {
-            return NotFound(new AllowDeliveryResponse
-            {
-                Success = false,
-                Message = "Allow delivery not configured."
-            });
-        }
-
-        return Ok(new AllowDeliveryResponse
-        {
-            Success = true,
-            Message = "Allow delivery retrieved.",
-            AllowDelivery = new AllowDeliveryInfo
-            {
-                Id = allowDelivery.Id,
-                IsAllowed = allowDelivery.IsAllowed
             }
         });
     }

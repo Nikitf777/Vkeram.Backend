@@ -22,8 +22,10 @@ public class OrdersController : ControllerBase
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IReservationDurationRepository _reservationDurationRepo;
+    private readonly IAllowBookingRepository _allowBookingRepo;
+    private readonly IAllowDeliveryRepository _allowDeliveryRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -34,6 +36,8 @@ public class OrdersController : ControllerBase
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
         _reservationDurationRepo = reservationDurationRepo;
+        _allowBookingRepo = allowBookingRepo;
+        _allowDeliveryRepo = allowDeliveryRepo;
     }
 
     [HttpGet]
@@ -341,6 +345,19 @@ public class OrdersController : ControllerBase
         var today = DateOnly.FromDateTime(now);
         var currentTime = TimeOnly.FromDateTime(now);
 
+        if (payload.Reservations.Count > 0)
+        {
+            var allowBooking = await _allowBookingRepo.GetAsync();
+            if (allowBooking != null && !allowBooking.IsAllowed)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Booking is currently not allowed."
+                });
+            }
+        }
+
         foreach (var slot in slots)
         {
             if (slot.Day < today || (slot.Day == today && slot.StartTime <= currentTime))
@@ -450,6 +467,19 @@ public class OrdersController : ControllerBase
             }
 
             order.Reservations.Add(reservation);
+        }
+
+        if (payload.Deliveries.Count > 0)
+        {
+            var allowDelivery = await _allowDeliveryRepo.GetAsync();
+            if (allowDelivery != null && !allowDelivery.IsAllowed)
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = "Delivery is currently not allowed."
+                });
+            }
         }
 
         foreach (var deliveryReq in payload.Deliveries)
@@ -573,6 +603,56 @@ public class OrdersController : ControllerBase
                 StartTime = b.StartTime.ToString("HH:mm"),
                 EndTime = b.EndTime.ToString("HH:mm")
             }).ToList()
+        });
+    }
+
+    [HttpGet("allow-booking")]
+    public async Task<ActionResult<AllowBookingResponse>> GetAllowBooking()
+    {
+        var allowBooking = await _allowBookingRepo.GetAsync();
+        if (allowBooking == null)
+        {
+            return NotFound(new AllowBookingResponse
+            {
+                Success = false,
+                Message = "Allow booking not configured."
+            });
+        }
+
+        return Ok(new AllowBookingResponse
+        {
+            Success = true,
+            Message = "Allow booking retrieved.",
+            AllowBooking = new AllowBookingInfo
+            {
+                Id = allowBooking.Id,
+                IsAllowed = allowBooking.IsAllowed
+            }
+        });
+    }
+
+    [HttpGet("allow-delivery")]
+    public async Task<ActionResult<AllowDeliveryResponse>> GetAllowDelivery()
+    {
+        var allowDelivery = await _allowDeliveryRepo.GetAsync();
+        if (allowDelivery == null)
+        {
+            return NotFound(new AllowDeliveryResponse
+            {
+                Success = false,
+                Message = "Allow delivery not configured."
+            });
+        }
+
+        return Ok(new AllowDeliveryResponse
+        {
+            Success = true,
+            Message = "Allow delivery retrieved.",
+            AllowDelivery = new AllowDeliveryInfo
+            {
+                Id = allowDelivery.Id,
+                IsAllowed = allowDelivery.IsAllowed
+            }
         });
     }
 

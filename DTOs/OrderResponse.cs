@@ -12,6 +12,8 @@ public class OrderResponse
     public DateTime? CreatedAt { get; set; }
     public List<ReservationInfo>? Reservations { get; set; }
     public List<DeliveryInfo>? Deliveries { get; set; }
+    public decimal TotalPrice { get; set; }
+    public int TotalQuantity { get; set; }
 }
 
 public class AdminOrderResponse
@@ -38,6 +40,8 @@ public class ProductReservationInfo
     public string ProductId { get; set; } = string.Empty;
     public string ProductName { get; set; } = string.Empty;
     public int Quantity { get; set; }
+    public decimal Price { get; set; }
+    public decimal TotalPrice { get; set; }
 }
 
 public class DeliveryInfo

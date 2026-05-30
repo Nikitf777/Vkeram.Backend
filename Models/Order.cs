@@ -26,4 +26,14 @@ public class Order
     public List<OrderReservation> Reservations { get; set; } = new();
 
     public List<OrderDelivery> Deliveries { get; set; } = new();
+
+    [NotMapped]
+    public decimal TotalPrice =>
+        Reservations.Sum(r => r.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity))
+        + Deliveries.Sum(d => d.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity));
+
+    [NotMapped]
+    public int TotalQuantity =>
+        Reservations.Sum(r => r.ProductReservations.Sum(pr => pr.Quantity))
+        + Deliveries.Sum(d => d.ProductReservations.Sum(pr => pr.Quantity));
 }

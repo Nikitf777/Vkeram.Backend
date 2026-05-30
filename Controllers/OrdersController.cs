@@ -49,17 +49,9 @@ public class OrdersController : ControllerBase
             ? await _productService.GetByIdsAsync(allProductIds)
             : new Dictionary<string, ProductDto>();
 
-        var result = orders.Select(o => new OrderResponse
+        var result = orders.Select(o =>
         {
-            Success = true,
-            Message = "Order retrieved.",
-            OrderId = o.Id,
-            ConfirmationStatus = o.ConfirmationStatus,
-            PaymentStatus = o.PaymentStatus,
-            ShipmentStatus = o.ShipmentStatus,
-            UserId = o.UserId,
-            CreatedAt = o.CreatedAt,
-            Reservations = o.Reservations.Select(r => new ReservationInfo
+            var reservations = o.Reservations.Select(r => new ReservationInfo
             {
                 StartTime = r.Day.ToDateTime(r.StartTime),
                 EndTime = r.Day.ToDateTime(r.EndTime),
@@ -67,19 +59,40 @@ public class OrdersController : ControllerBase
                 {
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
-                    Quantity = pr.Quantity
+                    Quantity = pr.Quantity,
+                    Price = pr.ProductPrice?.Price ?? 0,
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
                 }).ToList()
-            }).ToList(),
-            Deliveries = o.Deliveries.Select(d => new DeliveryInfo
+            }).ToList();
+
+            var deliveries = o.Deliveries.Select(d => new DeliveryInfo
             {
                 DeliveryTime = d.DeliveryTime,
                 Products = d.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
-                    Quantity = pr.Quantity
+                    Quantity = pr.Quantity,
+                    Price = pr.ProductPrice?.Price ?? 0,
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
                 }).ToList()
-            }).ToList()
+            }).ToList();
+
+            return new OrderResponse
+            {
+                Success = true,
+                Message = "Order retrieved.",
+                OrderId = o.Id,
+                ConfirmationStatus = o.ConfirmationStatus,
+                PaymentStatus = o.PaymentStatus,
+                ShipmentStatus = o.ShipmentStatus,
+                UserId = o.UserId,
+                CreatedAt = o.CreatedAt,
+                Reservations = reservations,
+                Deliveries = deliveries,
+                TotalPrice = o.TotalPrice,
+                TotalQuantity = o.TotalQuantity
+            };
         }).ToList();
 
         return Ok(result);
@@ -396,27 +409,43 @@ public class OrdersController : ControllerBase
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt,
-            Reservations = order.Reservations.Select(r => new ReservationInfo
+            Reservations = order.Reservations.Select(r =>
             {
-                StartTime = r.Day.ToDateTime(r.StartTime),
-                EndTime = r.Day.ToDateTime(r.EndTime),
-                Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+                var products = r.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
                     ProductName = existingProducts[pr.ProductId].Name,
-                    Quantity = pr.Quantity
-                }).ToList()
+                    Quantity = pr.Quantity,
+                    Price = priceMap[pr.ProductId].Price,
+                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity
+                }).ToList();
+                return new ReservationInfo
+                {
+                    StartTime = r.Day.ToDateTime(r.StartTime),
+                    EndTime = r.Day.ToDateTime(r.EndTime),
+                    Products = products
+                };
             }).ToList(),
-            Deliveries = order.Deliveries.Select(d => new DeliveryInfo
+            Deliveries = order.Deliveries.Select(d =>
             {
-                DeliveryTime = d.DeliveryTime,
-                Products = d.ProductReservations.Select(pr => new ProductReservationInfo
+                var products = d.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
                     ProductName = existingProducts[pr.ProductId].Name,
-                    Quantity = pr.Quantity
-                }).ToList()
-            }).ToList()
+                    Quantity = pr.Quantity,
+                    Price = priceMap[pr.ProductId].Price,
+                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity
+                }).ToList();
+                return new DeliveryInfo
+                {
+                    DeliveryTime = d.DeliveryTime,
+                    Products = products
+                };
+            }).ToList(),
+            TotalPrice = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity))
+                       + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity)),
+            TotalQuantity = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => pr.Quantity))
+                          + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => pr.Quantity))
         });
     }
 

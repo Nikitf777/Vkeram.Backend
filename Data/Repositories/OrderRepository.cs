@@ -67,8 +67,10 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.User)
             .Include(o => o.Reservations)
                 .ThenInclude(r => r.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
             .Include(o => o.Deliveries)
                 .ThenInclude(d => d.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
     }
@@ -78,8 +80,10 @@ public class OrderRepository : IOrderRepository
         return await _db.Orders
             .Include(o => o.Reservations)
                 .ThenInclude(r => r.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
             .Include(o => o.Deliveries)
                 .ThenInclude(d => d.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
             .Where(o => o.UserId == userId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();

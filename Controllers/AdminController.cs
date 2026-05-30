@@ -211,7 +211,9 @@ public class AdminController : ControllerBase
             o.ShipmentStatus,
             o.CreatedAt,
             ReservationsCount = o.Reservations.Count,
-            DeliveriesCount = o.Deliveries.Count
+            DeliveriesCount = o.Deliveries.Count,
+            TotalPrice = o.TotalPrice,
+            TotalQuantity = o.TotalQuantity
         }).ToList();
 
         return Ok(new { Success = true, Orders = result });
@@ -234,7 +236,9 @@ public class AdminController : ControllerBase
             o.ShipmentStatus,
             o.CreatedAt,
             ReservationsCount = o.Reservations.Count,
-            DeliveriesCount = o.Deliveries.Count
+            DeliveriesCount = o.Deliveries.Count,
+            TotalPrice = o.TotalPrice,
+            TotalQuantity = o.TotalQuantity
         }).ToList();
 
         return Ok(new { Success = true, Orders = result });

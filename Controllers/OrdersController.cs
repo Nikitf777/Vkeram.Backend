@@ -378,12 +378,12 @@ public class OrdersController : ControllerBase
                 }
             }
 
-            if (await _orderRepo.HasOverlappingReservationAsync(slot.Day, slot.StartTime, slot.EndTime))
+            if (await _orderRepo.HasOverlappingReservationAsync(slot.Day, slot.StartTime, slot.EndTime, reservationDuration))
             {
                 return BadRequest(new OrderResponse
                 {
                     Success = false,
-                    Message = "The requested time slot overlaps with an existing reservation."
+                    Message = "The requested time slot is too close to an existing reservation or overlaps."
                 });
             }
         }
@@ -392,12 +392,16 @@ public class OrdersController : ControllerBase
         {
             for (int j = i + 1; j < slots.Count; j++)
             {
-                if (slots[i].Day == slots[j].Day && slots[i].StartTime < slots[j].EndTime && slots[j].StartTime < slots[i].EndTime)
+                var si = slots[i];
+                var sj = slots[j];
+                var siEnd = si.EndTime.AddMinutes(reservationDuration);
+                var sjEnd = sj.EndTime.AddMinutes(reservationDuration);
+                if (si.Day == sj.Day && si.StartTime < sjEnd && sj.StartTime < siEnd)
                 {
                     return BadRequest(new OrderResponse
                     {
                         Success = false,
-                        Message = "The requested time slots overlap with each other."
+                        Message = "The requested time slots are too close to each other."
                     });
                 }
             }

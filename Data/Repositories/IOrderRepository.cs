@@ -4,7 +4,7 @@ namespace Vkeram.Backend.Data.Repositories;
 
 public interface IOrderRepository
 {
-    Task<bool> HasOverlappingReservationAsync(DateOnly day, TimeOnly startTime, TimeOnly endTime);
+    Task<bool> HasOverlappingReservationAsync(DateOnly day, TimeOnly startTime, TimeOnly endTime, int bufferMinutes = 0);
     Task<Order> CreateAsync(Order order);
     Task<Order?> GetByIdAsync(int id);
     Task UpdateAsync(Order order);

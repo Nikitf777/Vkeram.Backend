@@ -12,9 +12,11 @@ public class OrderRepository : IOrderRepository
         _db = db;
     }
 
-    public async Task<bool> HasOverlappingReservationAsync(DateOnly day, TimeOnly startTime, TimeOnly endTime)
+    public async Task<bool> HasOverlappingReservationAsync(DateOnly day, TimeOnly startTime, TimeOnly endTime, int bufferMinutes = 0)
     {
-        return await _db.OrderReservations.AnyAsync(r => r.Day == day && r.StartTime < endTime && startTime < r.EndTime);
+        var bufferedStart = startTime.AddMinutes(-bufferMinutes);
+        var bufferedEnd = endTime.AddMinutes(bufferMinutes);
+        return await _db.OrderReservations.AnyAsync(r => r.Day == day && r.StartTime < bufferedEnd && bufferedStart < r.EndTime);
     }
 
     public async Task<Order> CreateAsync(Order order)

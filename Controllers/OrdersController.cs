@@ -316,8 +316,7 @@ public class OrdersController : ControllerBase
         {
             UserId = userId,
             ConfirmationStatus = Models.ConfirmationStatus.Confirmed.ToString(),
-            PaymentStatus = Models.PaymentStatus.Unpaid.ToString(),
-            ShipmentStatus = Models.ShipmentStatus.Unshipped.ToString()
+            PaymentStatus = Models.PaymentStatus.Unpaid.ToString()
         };
 
         foreach (var slot in slots)

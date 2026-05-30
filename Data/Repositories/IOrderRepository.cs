@@ -11,4 +11,8 @@ public interface IOrderRepository
     Task<List<OrderReservation>> GetFutureReservationsAsync(DateOnly? from = null, DateOnly? to = null);
     Task<List<Order>> GetAllAsync();
     Task<List<Order>> GetByUserIdAsync(int userId);
+    Task<OrderReservation?> GetReservationByIdAsync(int id);
+    Task<OrderDelivery?> GetDeliveryByIdAsync(int id);
+    Task UpdateReservationAsync(OrderReservation reservation);
+    Task UpdateDeliveryAsync(OrderDelivery delivery);
 }

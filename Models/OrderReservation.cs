@@ -17,5 +17,7 @@ public class OrderReservation
 
     public TimeOnly EndTime { get; set; }
 
+    public bool Picked { get; set; }
+
     public List<ProductReservation> ProductReservations { get; set; } = new();
 }

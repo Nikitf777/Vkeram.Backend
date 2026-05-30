@@ -256,7 +256,6 @@ public class AdminController : ControllerBase
 
     private static readonly string[] ValidConfirmationStatuses = ["Confirmed", "Unconfirmed", "Cancelled"];
     private static readonly string[] ValidPaymentStatuses = ["Paid", "PartiallyPaid", "Unpaid"];
-    private static readonly string[] ValidShipmentStatuses = ["Shipped", "PartiallyShipped", "Unshipped"];
 
     [HttpPatch("orders/{orderId}/confirmation")]
     public async Task<ActionResult<AdminOrderResponse>> UpdateConfirmationStatus(
@@ -344,47 +343,48 @@ public class AdminController : ControllerBase
         });
     }
 
-    [HttpPatch("orders/{orderId}/shipment")]
-    public async Task<ActionResult<AdminOrderResponse>> UpdateShipmentStatus(
+    [HttpPatch("orders/{orderId}/reservations/{reservationId}/pick")]
+    public async Task<ActionResult> PickReservation(
         int orderId,
-        [FromBody] UpdateOrderStatusRequest request,
+        int reservationId,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
-        if (!ValidShipmentStatuses.Contains(request.Status))
-        {
-            return BadRequest(new AdminOrderResponse
-            {
-                Success = false,
-                Message = $"Invalid shipment status. Valid values: {string.Join(", ", ValidShipmentStatuses)}."
-            });
-        }
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null)
+            return NotFound(new { Success = false, Message = "Order not found." });
+
+        var reservation = await _orderRepo.GetReservationByIdAsync(reservationId);
+        if (reservation == null || reservation.OrderId != orderId)
+            return NotFound(new { Success = false, Message = "Reservation not found." });
+
+        reservation.Picked = true;
+        await _orderRepo.UpdateReservationAsync(reservation);
+
+        return Ok(new { Success = true, Message = "Reservation marked as picked." });
+    }
+
+    [HttpPatch("orders/{orderId}/deliveries/{deliveryId}/deliver")]
+    public async Task<ActionResult> DeliverDelivery(
+        int orderId,
+        int deliveryId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
         var order = await _orderRepo.GetByIdAsync(orderId);
         if (order == null)
-        {
-            return NotFound(new AdminOrderResponse
-            {
-                Success = false,
-                Message = "Order not found."
-            });
-        }
+            return NotFound(new { Success = false, Message = "Order not found." });
 
-        order.ShipmentStatus = request.Status;
-        await _orderRepo.UpdateAsync(order);
+        var delivery = await _orderRepo.GetDeliveryByIdAsync(deliveryId);
+        if (delivery == null || delivery.OrderId != orderId)
+            return NotFound(new { Success = false, Message = "Delivery not found." });
 
-        return Ok(new AdminOrderResponse
-        {
-            Success = true,
-            Message = "Shipment status updated.",
-            OrderId = order.Id,
-            ConfirmationStatus = order.ConfirmationStatus,
-            PaymentStatus = order.PaymentStatus,
-            ShipmentStatus = order.ShipmentStatus,
-            UserId = order.UserId,
-            CreatedAt = order.CreatedAt
-        });
+        delivery.Delivered = true;
+        await _orderRepo.UpdateDeliveryAsync(delivery);
+
+        return Ok(new { Success = true, Message = "Delivery marked as delivered." });
     }
 
     [HttpGet("workdays")]

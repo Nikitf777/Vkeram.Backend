@@ -26,7 +26,14 @@ public class OrderRepository : IOrderRepository
 
     public async Task<Order?> GetByIdAsync(int id)
     {
-        return await _db.Orders.FindAsync(id);
+        return await _db.Orders
+            .Include(o => o.Reservations)
+                .ThenInclude(r => r.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
+            .Include(o => o.Deliveries)
+                .ThenInclude(d => d.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
+            .FirstOrDefaultAsync(o => o.Id == id);
     }
 
     public async Task UpdateAsync(Order order)
@@ -87,5 +94,27 @@ public class OrderRepository : IOrderRepository
             .Where(o => o.UserId == userId)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
+    }
+
+    public async Task<OrderReservation?> GetReservationByIdAsync(int id)
+    {
+        return await _db.OrderReservations.FindAsync(id);
+    }
+
+    public async Task<OrderDelivery?> GetDeliveryByIdAsync(int id)
+    {
+        return await _db.OrderDeliveries.FindAsync(id);
+    }
+
+    public async Task UpdateReservationAsync(OrderReservation reservation)
+    {
+        _db.OrderReservations.Update(reservation);
+        await _db.SaveChangesAsync();
+    }
+
+    public async Task UpdateDeliveryAsync(OrderDelivery delivery)
+    {
+        _db.OrderDeliveries.Update(delivery);
+        await _db.SaveChangesAsync();
     }
 }

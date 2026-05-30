@@ -44,7 +44,6 @@ public class AppDbContext : DbContext
             entity.HasIndex(e => e.UserId);
             entity.Property(e => e.ConfirmationStatus).HasMaxLength(50);
             entity.Property(e => e.PaymentStatus).HasMaxLength(50);
-            entity.Property(e => e.ShipmentStatus).HasMaxLength(50);
         });
 
         modelBuilder.Entity<OrderReservation>(entity =>

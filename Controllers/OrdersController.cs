@@ -98,6 +98,68 @@ public class OrdersController : ControllerBase
         return Ok(result);
     }
 
+    [HttpGet("{orderId}")]
+    public async Task<ActionResult<OrderResponse>> GetMyOrderById(int orderId)
+    {
+        var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
+        var o = await _orderRepo.GetByIdAsync(orderId);
+        if (o == null || o.UserId != userId)
+            return NotFound(new OrderResponse { Success = false, Message = "Order not found." });
+
+        var allProductIds = o.Reservations
+            .SelectMany(r => r.ProductReservations.Select(p => p.ProductId))
+            .Concat(o.Deliveries.SelectMany(d => d.ProductReservations.Select(p => p.ProductId)))
+            .Distinct()
+            .ToList();
+
+        var productMap = allProductIds.Count > 0
+            ? await _productService.GetByIdsAsync(allProductIds)
+            : new Dictionary<string, ProductDto>();
+
+        var reservations = o.Reservations.Select(r => new ReservationInfo
+        {
+            StartTime = r.Day.ToDateTime(r.StartTime),
+            EndTime = r.Day.ToDateTime(r.EndTime),
+            Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+            {
+                ProductId = pr.ProductId,
+                ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                Quantity = pr.Quantity,
+                Price = pr.ProductPrice?.Price ?? 0,
+                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+            }).ToList()
+        }).ToList();
+
+        var deliveries = o.Deliveries.Select(d => new DeliveryInfo
+        {
+            DeliveryTime = d.DeliveryTime,
+            Products = d.ProductReservations.Select(pr => new ProductReservationInfo
+            {
+                ProductId = pr.ProductId,
+                ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                Quantity = pr.Quantity,
+                Price = pr.ProductPrice?.Price ?? 0,
+                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+            }).ToList()
+        }).ToList();
+
+        return Ok(new OrderResponse
+        {
+            Success = true,
+            Message = "Order retrieved.",
+            OrderId = o.Id,
+            ConfirmationStatus = o.ConfirmationStatus,
+            PaymentStatus = o.PaymentStatus,
+            ShipmentStatus = o.ShipmentStatus,
+            UserId = o.UserId,
+            CreatedAt = o.CreatedAt,
+            Reservations = reservations,
+            Deliveries = deliveries,
+            TotalPrice = o.TotalPrice,
+            TotalQuantity = o.TotalQuantity
+        });
+    }
+
     [HttpGet("reservations")]
     public async Task<ActionResult<List<ReservationSlotInfo>>> GetFutureReservations(
         [FromQuery] DateOnly? from = null,

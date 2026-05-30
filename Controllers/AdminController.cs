@@ -25,10 +25,11 @@ public class AdminController : ControllerBase
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
     private readonly IProductImagePreviewRepository _productImagePreviewRepo;
     private readonly IImagePreviewService _imagePreviewService;
+    private readonly IProductService _productService;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -45,6 +46,7 @@ public class AdminController : ControllerBase
         _productCharacteristicRepo = productCharacteristicRepo;
         _productImagePreviewRepo = productImagePreviewRepo;
         _imagePreviewService = imagePreviewService;
+        _productService = productService;
         _userRepo = userRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
@@ -247,6 +249,67 @@ public class AdminController : ControllerBase
         }).ToList();
 
         return Ok(new { Success = true, Orders = result });
+    }
+
+    [HttpGet("orders/{orderId}")]
+    public async Task<ActionResult> GetOrderDetail(
+        int orderId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null)
+            return NotFound(new { Success = false, Message = "Order not found." });
+
+        var allProductIds = order.Reservations
+            .SelectMany(r => r.ProductReservations.Select(p => p.ProductId))
+            .Concat(order.Deliveries.SelectMany(d => d.ProductReservations.Select(p => p.ProductId)))
+            .Distinct()
+            .ToList();
+
+        var productMap = allProductIds.Count > 0
+            ? await _productService.GetByIdsAsync(allProductIds)
+            : new Dictionary<string, ProductDto>();
+
+        return Ok(new OrderResponse
+        {
+            Success = true,
+            Message = "Order retrieved.",
+            OrderId = order.Id,
+            ConfirmationStatus = order.ConfirmationStatus,
+            PaymentStatus = order.PaymentStatus,
+            ShipmentStatus = order.ShipmentStatus,
+            UserId = order.UserId,
+            CreatedAt = order.CreatedAt,
+            Reservations = order.Reservations.Select(r => new ReservationInfo
+            {
+                StartTime = r.Day.ToDateTime(r.StartTime),
+                EndTime = r.Day.ToDateTime(r.EndTime),
+                Products = r.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                    Quantity = pr.Quantity,
+                    Price = pr.ProductPrice?.Price ?? 0,
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                }).ToList()
+            }).ToList(),
+            Deliveries = order.Deliveries.Select(d => new DeliveryInfo
+            {
+                DeliveryTime = d.DeliveryTime,
+                Products = d.ProductReservations.Select(pr => new ProductReservationInfo
+                {
+                    ProductId = pr.ProductId,
+                    ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
+                    Quantity = pr.Quantity,
+                    Price = pr.ProductPrice?.Price ?? 0,
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                }).ToList()
+            }).ToList(),
+            TotalPrice = order.TotalPrice,
+            TotalQuantity = order.TotalQuantity
+        });
     }
 
     private bool IsValidAdmin(string adminKey) => adminKey == _adminKey;

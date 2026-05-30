@@ -14,7 +14,17 @@ public class InviteCodeRepository : IInviteCodeRepository
 
     public async Task<InviteCode?> GetByCodeAsync(string code)
     {
-        return await _db.InviteCodes.FirstOrDefaultAsync(i => i.Code == code && !i.IsUsed);
+        return await _db.InviteCodes.FirstOrDefaultAsync(i => i.Code == code && !i.IsUsed && !i.IsRevoked);
+    }
+
+    public async Task RevokeRangeAsync(List<int> ids)
+    {
+        var invites = await _db.InviteCodes.Where(i => ids.Contains(i.Id) && !i.IsUsed && !i.IsRevoked).ToListAsync();
+        foreach (var invite in invites)
+        {
+            invite.IsRevoked = true;
+        }
+        await _db.SaveChangesAsync();
     }
 
     public async Task MarkAsUsedAsync(InviteCode invite, int userId)

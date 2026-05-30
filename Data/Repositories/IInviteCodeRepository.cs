@@ -8,4 +8,5 @@ public interface IInviteCodeRepository
     Task MarkAsUsedAsync(InviteCode invite, int userId);
     Task CreateRangeAsync(IEnumerable<InviteCode> invites);
     Task<List<InviteCode>> GetAllAsync();
+    Task RevokeRangeAsync(List<int> ids);
 }

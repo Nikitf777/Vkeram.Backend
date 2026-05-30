@@ -14,6 +14,8 @@ public class InviteCode
 
     public bool IsUsed { get; set; } = false;
 
+    public bool IsRevoked { get; set; } = false;
+
     public int? UsedByUserId { get; set; }
 
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;

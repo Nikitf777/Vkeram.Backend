@@ -110,6 +110,7 @@ public class AdminController : ControllerBase
             i.Code,
             i.CompanyName,
             i.IsUsed,
+            i.IsRevoked,
             i.UsedByUserId,
             i.CreatedAt,
             i.UsedAt,
@@ -117,6 +118,26 @@ public class AdminController : ControllerBase
         }).ToList();
 
         return Ok(new { Success = true, Invites = invites });
+    }
+
+    [HttpPost("invites/revoke")]
+    public async Task<ActionResult> RevokeInvites(
+        [FromBody] RevokeInvitesRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (adminKey != _adminKey)
+        {
+            return Unauthorized(new { Success = false, Message = "Invalid admin key." });
+        }
+
+        if (request.Ids == null || request.Ids.Count == 0)
+        {
+            return BadRequest(new { Success = false, Message = "No IDs provided." });
+        }
+
+        await _inviteRepo.RevokeRangeAsync(request.Ids);
+
+        return Ok(new { Success = true, Message = $"Revoked {request.Ids.Count} invite code(s)." });
     }
 
     [HttpGet("users")]

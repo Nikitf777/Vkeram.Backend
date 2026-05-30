@@ -6,4 +6,5 @@ public class ProductWithPriceAndCharacteristicsDto
     public string Name { get; set; } = string.Empty;
     public decimal? Price { get; set; }
     public ProductCharacteristicDto? Characteristics { get; set; }
+    public string? PreviewUrl { get; set; }
 }

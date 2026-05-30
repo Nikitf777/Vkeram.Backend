@@ -23,6 +23,7 @@ public class AppDbContext : DbContext
     public DbSet<AllowDelivery> AllowDelivery => Set<AllowDelivery>();
     public DbSet<ProductPrice> ProductPrices => Set<ProductPrice>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
+    public DbSet<ProductImagePreview> ProductImagePreviews => Set<ProductImagePreview>();
     public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
@@ -118,6 +119,14 @@ public class AppDbContext : DbContext
             entity.Property(e => e.FileName).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
             entity.HasIndex(e => e.ProductId);
+        });
+
+        modelBuilder.Entity<ProductImagePreview>(entity =>
+        {
+            entity.Property(e => e.ProductId).HasMaxLength(100);
+            entity.Property(e => e.ContentType).HasMaxLength(100);
+            entity.HasIndex(e => e.ProductId);
+            entity.HasIndex(e => e.ImageId);
         });
 
         modelBuilder.Entity<ProductCharacteristic>(entity =>

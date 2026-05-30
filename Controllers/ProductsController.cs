@@ -13,18 +13,23 @@ public class ProductsController : ControllerBase
     private readonly IProductService _productService;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
+    private readonly IProductImagePreviewRepository _productImagePreviewRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
+    private readonly string _baseUrl;
 
-    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo)
+    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductImagePreviewRepository productImagePreviewRepo, IProductCharacteristicRepository productCharacteristicRepo, IHttpContextAccessor httpContextAccessor)
     {
         _productService = productService;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
+        _productImagePreviewRepo = productImagePreviewRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
+        var request = httpContextAccessor.HttpContext?.Request;
+        _baseUrl = request != null ? $"{request.Scheme}://{request.Host}" : "";
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll([FromQuery] ProductCharacteristicInclude include = ProductCharacteristicInclude.None)
+    public async Task<IActionResult> GetAll([FromQuery] ProductCharacteristicInclude include = ProductCharacteristicInclude.None, [FromQuery] bool includePreviews = false)
     {
         var products = await _productService.GetAllAsync();
 
@@ -43,13 +48,25 @@ public class ProductsController : ControllerBase
 
         var charMap = characteristics?.ToDictionary(c => c.ProductId);
 
+        Dictionary<string, string?>? previewUrlMap = null;
+        if (includePreviews)
+        {
+            var allPreviews = await Task.WhenAll(products.Select(p =>
+                _productImagePreviewRepo.GetByProductIdAsync(p.Id)));
+            previewUrlMap = allPreviews
+                .Select(pl => pl.FirstOrDefault())
+                .Where(p => p != null)
+                .ToDictionary(p => p!.ProductId, p => (string?)$"{_baseUrl}/api/products/{p!.ProductId}/images/{p.Id}/preview");
+        }
+
         var result = products.Select(p =>
         {
             var dto = new ProductWithPriceAndCharacteristicsDto
             {
                 Id = p.Id,
                 Name = p.Name,
-                Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price : null
+                Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price : null,
+                PreviewUrl = previewUrlMap?.GetValueOrDefault(p.Id)
             };
             if (charMap != null && charMap.TryGetValue(p.Id, out var c))
                 dto.Characteristics = c;
@@ -148,5 +165,15 @@ public class ProductsController : ControllerBase
             return NotFound();
 
         return File(image.ImageData, image.ContentType, image.FileName);
+    }
+
+    [HttpGet("{productId}/images/{imageId}/preview")]
+    public async Task<IActionResult> GetImagePreview(string productId, int imageId)
+    {
+        var preview = await _productImagePreviewRepo.GetByImageIdAsync(imageId);
+        if (preview == null || preview.ProductId != productId)
+            return NotFound();
+
+        return File(preview.ImageData, preview.ContentType);
     }
 }

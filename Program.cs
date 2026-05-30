@@ -32,7 +32,10 @@ builder.Services.AddScoped<IAllowBookingRepository, AllowBookingRepository>();
 builder.Services.AddScoped<IAllowDeliveryRepository, AllowDeliveryRepository>();
 builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
+builder.Services.AddScoped<IProductImagePreviewRepository, ProductImagePreviewRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();
+builder.Services.AddScoped<IImagePreviewService, ImagePreviewService>();
+builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
 {

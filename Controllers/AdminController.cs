@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Mvc;
 using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.DTOs;
 using Vkeram.Backend.Models;
+using Vkeram.Backend.Services;
 
 namespace Vkeram.Backend.Controllers;
 
@@ -22,10 +23,12 @@ public class AdminController : ControllerBase
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
+    private readonly IProductImagePreviewRepository _productImagePreviewRepo;
+    private readonly IImagePreviewService _imagePreviewService;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -40,6 +43,8 @@ public class AdminController : ControllerBase
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
+        _productImagePreviewRepo = productImagePreviewRepo;
+        _imagePreviewService = imagePreviewService;
         _userRepo = userRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
@@ -1019,6 +1024,9 @@ public class AdminController : ControllerBase
 
         await _productImageRepo.AddAsync(image);
 
+        var preview = _imagePreviewService.GeneratePreview(image);
+        await _productImagePreviewRepo.AddAsync(preview);
+
         return Ok(new
         {
             Success = true,
@@ -1047,6 +1055,7 @@ public class AdminController : ControllerBase
             return NotFound(new { Success = false, Message = "Image not found." });
 
         await _productImageRepo.DeleteAsync(image);
+        await _productImagePreviewRepo.DeleteByImageIdAsync(imageId);
 
         return Ok(new { Success = true, Message = "Image deleted." });
     }

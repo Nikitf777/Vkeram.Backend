@@ -19,4 +19,9 @@ public class ProductReservation
     public string ProductId { get; set; } = string.Empty;
 
     public int Quantity { get; set; }
+
+    public int ProductPriceId { get; set; }
+
+    [ForeignKey(nameof(ProductPriceId))]
+    public ProductPrice ProductPrice { get; set; } = null!;
 }

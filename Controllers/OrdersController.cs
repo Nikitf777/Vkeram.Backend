@@ -19,8 +19,9 @@ public class OrdersController : ControllerBase
     private readonly IWorkingHoursRepository _workingHoursRepo;
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
+    private readonly IProductPriceRepository _productPriceRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -28,6 +29,7 @@ public class OrdersController : ControllerBase
         _workingHoursRepo = workingHoursRepo;
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
+        _productPriceRepo = productPriceRepo;
     }
 
     [HttpGet]
@@ -144,6 +146,20 @@ public class OrdersController : ControllerBase
                 Success = false,
                 Message = $"Product with ID {unknownId} does not exist."
             });
+        }
+
+        var latestPrices = await _productPriceRepo.GetLatestPerProductAsync();
+        var priceMap = latestPrices.ToDictionary(p => p.ProductId);
+        foreach (var pid in allProductIds)
+        {
+            if (!priceMap.ContainsKey(pid))
+            {
+                return BadRequest(new OrderResponse
+                {
+                    Success = false,
+                    Message = $"Product with ID {pid} does not have a price set."
+                });
+            }
         }
 
         foreach (var r in payload.Reservations)
@@ -305,7 +321,8 @@ public class OrdersController : ControllerBase
                 reservation.ProductReservations.Add(new ProductReservation
                 {
                     ProductId = productReq.ProductId,
-                    Quantity = productReq.Quantity
+                    Quantity = productReq.Quantity,
+                    ProductPriceId = priceMap[productReq.ProductId].Id
                 });
             }
 
@@ -359,7 +376,8 @@ public class OrdersController : ControllerBase
                 delivery.ProductReservations.Add(new ProductReservation
                 {
                     ProductId = productReq.ProductId,
-                    Quantity = productReq.Quantity
+                    Quantity = productReq.Quantity,
+                    ProductPriceId = priceMap[productReq.ProductId].Id
                 });
             }
 

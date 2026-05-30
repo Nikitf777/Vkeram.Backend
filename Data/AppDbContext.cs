@@ -61,6 +61,7 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ProductId).HasMaxLength(100);
             entity.HasIndex(e => new { e.OrderReservationId, e.ProductId }).IsUnique();
             entity.HasIndex(e => new { e.OrderDeliveryId, e.ProductId }).IsUnique();
+            entity.HasOne(e => e.ProductPrice).WithMany().HasForeignKey(e => e.ProductPriceId).OnDelete(DeleteBehavior.Restrict);
         });
 
         modelBuilder.Entity<WorkDay>(entity =>

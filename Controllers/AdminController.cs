@@ -104,6 +104,8 @@ public class AdminController : ControllerBase
         }
 
         var inviteList = await _inviteRepo.GetAllAsync();
+        var allUsers = await _userRepo.GetAllAsync();
+        var usersById = allUsers.ToDictionary(u => u.Id);
         var invites = inviteList.Select(i => new
         {
             i.Id,
@@ -112,6 +114,7 @@ public class AdminController : ControllerBase
             i.IsUsed,
             i.IsRevoked,
             i.UsedByUserId,
+            UsedByCompanyName = i.UsedByUserId.HasValue && usersById.TryGetValue(i.UsedByUserId.Value, out var u) ? u.CompanyName : null,
             i.CreatedAt,
             i.UsedAt,
             i.ExpiresAt

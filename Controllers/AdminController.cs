@@ -20,6 +20,7 @@ public class AdminController : ControllerBase
     private readonly IMaximumDeliveryDaysRepository _maxDeliveryDaysRepo;
     private readonly IAllowBookingRepository _allowBookingRepo;
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
+    private readonly IReservationDurationRepository _reservationDurationRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
@@ -29,7 +30,7 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -41,6 +42,7 @@ public class AdminController : ControllerBase
         _maxDeliveryDaysRepo = maxDeliveryDaysRepo;
         _allowBookingRepo = allowBookingRepo;
         _allowDeliveryRepo = allowDeliveryRepo;
+        _reservationDurationRepo = reservationDurationRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -992,6 +994,75 @@ public class AdminController : ControllerBase
             {
                 Id = allowDelivery.Id,
                 IsAllowed = allowDelivery.IsAllowed
+            }
+        });
+    }
+
+    [HttpGet("reservation-duration")]
+    public async Task<ActionResult<ReservationDurationResponse>> GetReservationDuration(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var d = await _reservationDurationRepo.GetAsync();
+        if (d == null)
+        {
+            return NotFound(new ReservationDurationResponse
+            {
+                Success = false,
+                Message = "Reservation duration not found."
+            });
+        }
+
+        return Ok(new ReservationDurationResponse
+        {
+            Success = true,
+            Message = "Reservation duration retrieved.",
+            ReservationDuration = new ReservationDurationInfo
+            {
+                Id = d.Id,
+                DurationMinutes = d.DurationMinutes
+            }
+        });
+    }
+
+    [HttpPatch("reservation-duration")]
+    public async Task<ActionResult<ReservationDurationResponse>> UpdateReservationDuration(
+        [FromBody] UpdateReservationDurationRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.DurationMinutes < 1 || request.DurationMinutes > 480)
+        {
+            return BadRequest(new ReservationDurationResponse
+            {
+                Success = false,
+                Message = "Duration must be between 1 and 480 minutes."
+            });
+        }
+
+        var d = await _reservationDurationRepo.GetAsync();
+        if (d == null)
+        {
+            return NotFound(new ReservationDurationResponse
+            {
+                Success = false,
+                Message = "Reservation duration not found."
+            });
+        }
+
+        d.DurationMinutes = request.DurationMinutes;
+        await _reservationDurationRepo.UpdateAsync(d);
+
+        return Ok(new ReservationDurationResponse
+        {
+            Success = true,
+            Message = "Reservation duration updated.",
+            ReservationDuration = new ReservationDurationInfo
+            {
+                Id = d.Id,
+                DurationMinutes = d.DurationMinutes
             }
         });
     }

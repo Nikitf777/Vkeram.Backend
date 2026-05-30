@@ -20,8 +20,9 @@ public class OrdersController : ControllerBase
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
+    private readonly IReservationDurationRepository _reservationDurationRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -30,6 +31,7 @@ public class OrdersController : ControllerBase
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
+        _reservationDurationRepo = reservationDurationRepo;
     }
 
     [HttpGet]
@@ -157,6 +159,31 @@ public class OrdersController : ControllerBase
             Deliveries = deliveries,
             TotalPrice = o.TotalPrice,
             TotalQuantity = o.TotalQuantity
+        });
+    }
+
+    [HttpGet("reservation-duration")]
+    public async Task<ActionResult<ReservationDurationResponse>> GetReservationDuration()
+    {
+        var d = await _reservationDurationRepo.GetAsync();
+        if (d == null)
+        {
+            return NotFound(new ReservationDurationResponse
+            {
+                Success = false,
+                Message = "Reservation duration not found."
+            });
+        }
+
+        return Ok(new ReservationDurationResponse
+        {
+            Success = true,
+            Message = "Reservation duration retrieved.",
+            ReservationDuration = new ReservationDurationInfo
+            {
+                Id = d.Id,
+                DurationMinutes = d.DurationMinutes
+            }
         });
     }
 
@@ -294,13 +321,15 @@ public class OrdersController : ControllerBase
         if (minDeliveryDays != null)
             earliestDeliveryDate = GetEarliestAllowedDate(DateTime.UtcNow, minDeliveryDays.Days, minDeliveryDays.CountWorkingDaysOnly, workingHours?.StartTime, workingDayNames);
 
+        var reservationDuration = (await _reservationDurationRepo.GetAsync())?.DurationMinutes ?? 30;
+
         var slots = payload.Reservations.Select(r =>
         {
             if (r.StartTime.Kind == DateTimeKind.Unspecified)
                 r.StartTime = DateTime.SpecifyKind(r.StartTime, DateTimeKind.Utc);
             var day = DateOnly.FromDateTime(r.StartTime);
             var startTime = TimeOnly.FromDateTime(r.StartTime);
-            var endTime = startTime.Add(new TimeSpan(0, 30, 0));
+            var endTime = startTime.AddMinutes(reservationDuration);
             return (Day: day, StartTime: startTime, EndTime: endTime, Products: r.Products);
         }).ToList();
 

@@ -25,6 +25,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<ProductImagePreview> ProductImagePreviews => Set<ProductImagePreview>();
     public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
+    public DbSet<ReservationDuration> ReservationDuration => Set<ReservationDuration>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -118,6 +119,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.FileName).HasMaxLength(255);
             entity.Property(e => e.ContentType).HasMaxLength(100);
             entity.HasIndex(e => e.ProductId);
+        });
+
+        modelBuilder.Entity<ReservationDuration>(entity =>
+        {
+            entity.HasData(new ReservationDuration { Id = 1, DurationMinutes = 30 });
         });
 
         modelBuilder.Entity<ProductImagePreview>(entity =>

@@ -83,5 +83,15 @@ public static class DbInitializer
 
             await db.SaveChangesAsync();
         }
+
+        if (!db.ReservationDuration.Any())
+        {
+            db.ReservationDuration.Add(new ReservationDuration
+            {
+                DurationMinutes = 30
+            });
+
+            await db.SaveChangesAsync();
+        }
     }
 }

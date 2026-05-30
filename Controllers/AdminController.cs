@@ -13,7 +13,8 @@ public class AdminController : ControllerBase
     private readonly IInviteCodeRepository _inviteRepo;
     private readonly IOrderRepository _orderRepo;
     private readonly IWorkDayRepository _workDayRepo;
-    private readonly IWorkingHoursRepository _workingHoursRepo;
+    private readonly IDefaultWorkingHoursRepository _workingHoursRepo;
+    private readonly IDefaultBreakRepository _breakRepo;
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMaximumBookingDaysRepository _maxBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
@@ -30,12 +31,13 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
         _workDayRepo = workDayRepo;
         _workingHoursRepo = workingHoursRepo;
+        _breakRepo = breakRepo;
         _minBookingDaysRepo = minBookingDaysRepo;
         _maxBookingDaysRepo = maxBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
@@ -508,8 +510,8 @@ public class AdminController : ControllerBase
         });
     }
 
-    [HttpGet("working-hours")]
-    public async Task<ActionResult<WorkingHoursResponse>> GetWorkingHours(
+    [HttpGet("default-working-hours")]
+    public async Task<ActionResult<DefaultWorkingHoursResponse>> GetDefaultWorkingHours(
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
@@ -517,18 +519,18 @@ public class AdminController : ControllerBase
         var workingHours = await _workingHoursRepo.GetAsync();
         if (workingHours == null)
         {
-            return NotFound(new WorkingHoursResponse
+            return NotFound(new DefaultWorkingHoursResponse
             {
                 Success = false,
                 Message = "Working hours not configured."
             });
         }
 
-        return Ok(new WorkingHoursResponse
+        return Ok(new DefaultWorkingHoursResponse
         {
             Success = true,
             Message = "Working hours retrieved.",
-            WorkingHours = new WorkingHoursInfo
+            WorkingHours = new DefaultWorkingHoursInfo
             {
                 Id = workingHours.Id,
                 StartTime = workingHours.StartTime.ToString("HH:mm"),
@@ -537,9 +539,9 @@ public class AdminController : ControllerBase
         });
     }
 
-    [HttpPatch("working-hours")]
-    public async Task<ActionResult<WorkingHoursResponse>> UpdateWorkingHours(
-        [FromBody] UpdateWorkingHoursRequest request,
+    [HttpPatch("default-working-hours")]
+    public async Task<ActionResult<DefaultWorkingHoursResponse>> UpdateDefaultWorkingHours(
+        [FromBody] UpdateDefaultWorkingHoursRequest request,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
@@ -547,7 +549,7 @@ public class AdminController : ControllerBase
         if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
             !TimeOnly.TryParse(request.EndTime, out var endTime))
         {
-            return BadRequest(new WorkingHoursResponse
+            return BadRequest(new DefaultWorkingHoursResponse
             {
                 Success = false,
                 Message = "Invalid time format. Use HH:mm (e.g. 09:00)."
@@ -556,7 +558,7 @@ public class AdminController : ControllerBase
 
         if (startTime >= endTime)
         {
-            return BadRequest(new WorkingHoursResponse
+            return BadRequest(new DefaultWorkingHoursResponse
             {
                 Success = false,
                 Message = "Start time must be before end time."
@@ -566,7 +568,7 @@ public class AdminController : ControllerBase
         var workingHours = await _workingHoursRepo.GetAsync();
         if (workingHours == null)
         {
-            return NotFound(new WorkingHoursResponse
+            return NotFound(new DefaultWorkingHoursResponse
             {
                 Success = false,
                 Message = "Working hours not configured."
@@ -577,16 +579,204 @@ public class AdminController : ControllerBase
         workingHours.EndTime = endTime;
         await _workingHoursRepo.UpdateAsync(workingHours);
 
-        return Ok(new WorkingHoursResponse
+        return Ok(new DefaultWorkingHoursResponse
         {
             Success = true,
             Message = "Working hours updated.",
-            WorkingHours = new WorkingHoursInfo
+            WorkingHours = new DefaultWorkingHoursInfo
             {
                 Id = workingHours.Id,
                 StartTime = workingHours.StartTime.ToString("HH:mm"),
                 EndTime = workingHours.EndTime.ToString("HH:mm")
             }
+        });
+    }
+
+    [HttpGet("breaks")]
+    public async Task<ActionResult<DefaultBreakListResponse>> GetBreaks(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var breaks = await _breakRepo.GetAllAsync();
+        return Ok(new DefaultBreakListResponse
+        {
+            Success = true,
+            Message = "Breaks retrieved.",
+            Breaks = breaks.Select(b => new DefaultBreakInfo
+            {
+                Id = b.Id,
+                StartTime = b.StartTime.ToString("HH:mm"),
+                EndTime = b.EndTime.ToString("HH:mm")
+            }).ToList()
+        });
+    }
+
+    [HttpPost("breaks")]
+    public async Task<ActionResult<DefaultBreakResponse>> CreateBreak(
+        [FromBody] UpdateDefaultWorkingHoursRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
+            !TimeOnly.TryParse(request.EndTime, out var endTime))
+        {
+            return BadRequest(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Invalid time format. Use HH:mm (e.g. 12:00)."
+            });
+        }
+
+        if (startTime >= endTime)
+        {
+            return BadRequest(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Start time must be before end time."
+            });
+        }
+
+        var allBreaks = await _breakRepo.GetAllAsync();
+        foreach (var b in allBreaks)
+        {
+            if (startTime < b.EndTime && endTime > b.StartTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break overlaps with an existing break."
+                });
+            }
+            if (endTime == b.StartTime || startTime == b.EndTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Breaks must not be directly adjacent to each other."
+                });
+            }
+        }
+
+        var breakItem = await _breakRepo.CreateAsync(new DefaultBreak
+        {
+            StartTime = startTime,
+            EndTime = endTime
+        });
+
+        return Ok(new DefaultBreakResponse
+        {
+            Success = true,
+            Message = "Break created.",
+            Break = new DefaultBreakInfo
+            {
+                Id = breakItem.Id,
+                StartTime = breakItem.StartTime.ToString("HH:mm"),
+                EndTime = breakItem.EndTime.ToString("HH:mm")
+            }
+        });
+    }
+
+    [HttpPatch("breaks/{id}")]
+    public async Task<ActionResult<DefaultBreakResponse>> UpdateBreak(
+        int id,
+        [FromBody] UpdateDefaultWorkingHoursRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (!TimeOnly.TryParse(request.StartTime, out var startTime) ||
+            !TimeOnly.TryParse(request.EndTime, out var endTime))
+        {
+            return BadRequest(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Invalid time format. Use HH:mm (e.g. 12:00)."
+            });
+        }
+
+        if (startTime >= endTime)
+        {
+            return BadRequest(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Start time must be before end time."
+            });
+        }
+
+        var existing = await _breakRepo.GetByIdAsync(id);
+        if (existing == null)
+        {
+            return NotFound(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Break not found."
+            });
+        }
+
+        var allBreaks = await _breakRepo.GetAllAsync();
+        foreach (var b in allBreaks)
+        {
+            if (b.Id == id) continue;
+            if (startTime < b.EndTime && endTime > b.StartTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Break overlaps with an existing break."
+                });
+            }
+            if (endTime == b.StartTime || startTime == b.EndTime)
+            {
+                return BadRequest(new DefaultBreakResponse
+                {
+                    Success = false,
+                    Message = "Breaks must not be directly adjacent to each other."
+                });
+            }
+        }
+
+        existing.StartTime = startTime;
+        existing.EndTime = endTime;
+        await _breakRepo.UpdateAsync(existing);
+
+        return Ok(new DefaultBreakResponse
+        {
+            Success = true,
+            Message = "Break updated.",
+            Break = new DefaultBreakInfo
+            {
+                Id = existing.Id,
+                StartTime = existing.StartTime.ToString("HH:mm"),
+                EndTime = existing.EndTime.ToString("HH:mm")
+            }
+        });
+    }
+
+    [HttpDelete("breaks/{id}")]
+    public async Task<ActionResult<DefaultBreakResponse>> DeleteBreak(
+        int id,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var existing = await _breakRepo.GetByIdAsync(id);
+        if (existing == null)
+        {
+            return NotFound(new DefaultBreakResponse
+            {
+                Success = false,
+                Message = "Break not found."
+            });
+        }
+
+        await _breakRepo.DeleteAsync(existing);
+
+        return Ok(new DefaultBreakResponse
+        {
+            Success = true,
+            Message = "Break deleted."
         });
     }
 

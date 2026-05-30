@@ -1,6 +1,6 @@
 namespace Vkeram.Backend.DTOs;
 
-public class UpdateWorkingHoursRequest
+public class UpdateDefaultWorkingHoursRequest
 {
     public string StartTime { get; set; } = string.Empty;
     public string EndTime { get; set; } = string.Empty;

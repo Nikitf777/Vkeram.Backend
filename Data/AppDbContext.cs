@@ -14,7 +14,8 @@ public class AppDbContext : DbContext
     public DbSet<OrderDelivery> OrderDeliveries => Set<OrderDelivery>();
     public DbSet<ProductReservation> ProductReservations => Set<ProductReservation>();
     public DbSet<WorkDay> WorkDays => Set<WorkDay>();
-    public DbSet<WorkingHours> WorkingHours => Set<WorkingHours>();
+    public DbSet<DefaultWorkingHours> DefaultWorkingHours => Set<DefaultWorkingHours>();
+    public DbSet<DefaultBreak> DefaultBreaks => Set<DefaultBreak>();
     public DbSet<MinimumBookingDays> MinimumBookingDays => Set<MinimumBookingDays>();
     public DbSet<MaximumBookingDays> MaximumBookingDays => Set<MaximumBookingDays>();
     public DbSet<MinimumDeliveryDays> MinimumDeliveryDays => Set<MinimumDeliveryDays>();
@@ -71,9 +72,13 @@ public class AppDbContext : DbContext
             entity.Property(e => e.DayName).HasMaxLength(20);
         });
 
-        modelBuilder.Entity<WorkingHours>(entity =>
+        modelBuilder.Entity<DefaultWorkingHours>(entity =>
         {
-            entity.HasData(new WorkingHours { Id = 1, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(18, 0) });
+            entity.HasData(new DefaultWorkingHours { Id = 1, StartTime = new TimeOnly(9, 0), EndTime = new TimeOnly(18, 0) });
+        });
+
+        modelBuilder.Entity<DefaultBreak>(entity =>
+        {
         });
 
         modelBuilder.Entity<MinimumBookingDays>(entity =>

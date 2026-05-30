@@ -1,6 +1,6 @@
 namespace Vkeram.Backend.Models;
 
-public class WorkingHours
+public class DefaultWorkingHours
 {
     public int Id { get; set; }
     public TimeOnly StartTime { get; set; }

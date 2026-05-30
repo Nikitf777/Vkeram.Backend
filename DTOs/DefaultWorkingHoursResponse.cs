@@ -1,13 +1,13 @@
 namespace Vkeram.Backend.DTOs;
 
-public class WorkingHoursResponse
+public class DefaultWorkingHoursResponse
 {
     public bool Success { get; set; }
     public string Message { get; set; } = string.Empty;
-    public WorkingHoursInfo? WorkingHours { get; set; }
+    public DefaultWorkingHoursInfo? WorkingHours { get; set; }
 }
 
-public class WorkingHoursInfo
+public class DefaultWorkingHoursInfo
 {
     public int Id { get; set; }
     public string StartTime { get; set; } = string.Empty;

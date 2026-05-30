@@ -16,18 +16,20 @@ public class OrdersController : ControllerBase
     private readonly IOrderRepository _orderRepo;
     private readonly IProductService _productService;
     private readonly IWorkDayRepository _workDayRepo;
-    private readonly IWorkingHoursRepository _workingHoursRepo;
+    private readonly IDefaultWorkingHoursRepository _workingHoursRepo;
+    private readonly IDefaultBreakRepository _breakRepo;
     private readonly IMinimumBookingDaysRepository _minBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IReservationDurationRepository _reservationDurationRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
         _workDayRepo = workDayRepo;
         _workingHoursRepo = workingHoursRepo;
+        _breakRepo = breakRepo;
         _minBookingDaysRepo = minBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _productPriceRepo = productPriceRepo;
@@ -205,7 +207,8 @@ public class OrdersController : ControllerBase
                 return BadRequest(new { Success = false, Message = "'from' must not be in the past." });
             }
 
-            var workingHours = await _workingHoursRepo.GetAsync();
+        var workingHours = await _workingHoursRepo.GetAsync();
+        var breaks = await _breakRepo.GetAllAsync();
             if (from.Value == today && workingHours != null && TimeOnly.FromDateTime(DateTime.UtcNow) > workingHours.StartTime)
             {
                 return BadRequest(new { Success = false, Message = "'from' cannot be today because working hours have already started." });
@@ -310,6 +313,7 @@ public class OrdersController : ControllerBase
         var workingDayNames = workDays.Where(w => w.IsWorkingDay).Select(w => w.DayName).ToHashSet();
 
         var workingHours = await _workingHoursRepo.GetAsync();
+        var breaks = await _breakRepo.GetAllAsync();
 
         var minBookingDays = await _minBookingDaysRepo.GetAsync();
         DateOnly? earliestReservationDate = null;
@@ -374,6 +378,18 @@ public class OrdersController : ControllerBase
                     {
                         Success = false,
                         Message = $"Reservations must be within working hours ({workingHours.StartTime:HH:mm}-{workingHours.EndTime:HH:mm})."
+                    });
+                }
+            }
+
+            foreach (var b in breaks)
+            {
+                if (slot.StartTime < b.EndTime && slot.EndTime > b.StartTime)
+                {
+                    return BadRequest(new OrderResponse
+                    {
+                        Success = false,
+                        Message = "Reservations must not overlap with breaks."
                     });
                 }
             }
@@ -540,6 +556,23 @@ public class OrdersController : ControllerBase
                        + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity)),
             TotalQuantity = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => pr.Quantity))
                           + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => pr.Quantity))
+        });
+    }
+
+    [HttpGet("breaks")]
+    public async Task<ActionResult<DefaultBreakListResponse>> GetBreaks()
+    {
+        var breaks = await _breakRepo.GetAllAsync();
+        return Ok(new DefaultBreakListResponse
+        {
+            Success = true,
+            Message = "Breaks retrieved.",
+            Breaks = breaks.Select(b => new DefaultBreakInfo
+            {
+                Id = b.Id,
+                StartTime = b.StartTime.ToString("HH:mm"),
+                EndTime = b.EndTime.ToString("HH:mm")
+            }).ToList()
         });
     }
 

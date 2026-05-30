@@ -51,12 +51,23 @@ public static class DbInitializer
             await db.SaveChangesAsync();
         }
 
-        if (!db.WorkingHours.Any())
+        if (!db.DefaultWorkingHours.Any())
         {
-            db.WorkingHours.Add(new WorkingHours
+            db.DefaultWorkingHours.Add(new DefaultWorkingHours
             {
                 StartTime = new TimeOnly(8, 0),
                 EndTime = new TimeOnly(17, 0)
+            });
+
+            await db.SaveChangesAsync();
+        }
+
+        if (!db.DefaultBreaks.Any())
+        {
+            db.DefaultBreaks.Add(new DefaultBreak
+            {
+                StartTime = new TimeOnly(12, 0),
+                EndTime = new TimeOnly(13, 0)
             });
 
             await db.SaveChangesAsync();

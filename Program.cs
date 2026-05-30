@@ -28,6 +28,8 @@ builder.Services.AddScoped<IMinimumBookingDaysRepository, MinimumBookingDaysRepo
 builder.Services.AddScoped<IMinimumDeliveryDaysRepository, MinimumDeliveryDaysRepository>();
 builder.Services.AddScoped<IMaximumBookingDaysRepository, MaximumBookingDaysRepository>();
 builder.Services.AddScoped<IMaximumDeliveryDaysRepository, MaximumDeliveryDaysRepository>();
+builder.Services.AddScoped<IAllowBookingRepository, AllowBookingRepository>();
+builder.Services.AddScoped<IAllowDeliveryRepository, AllowDeliveryRepository>();
 builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();

@@ -17,13 +17,15 @@ public class AdminController : ControllerBase
     private readonly IMaximumBookingDaysRepository _maxBookingDaysRepo;
     private readonly IMinimumDeliveryDaysRepository _minDeliveryDaysRepo;
     private readonly IMaximumDeliveryDaysRepository _maxDeliveryDaysRepo;
+    private readonly IAllowBookingRepository _allowBookingRepo;
+    private readonly IAllowDeliveryRepository _allowDeliveryRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IWorkingHoursRepository workingHoursRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -33,6 +35,8 @@ public class AdminController : ControllerBase
         _maxBookingDaysRepo = maxBookingDaysRepo;
         _minDeliveryDaysRepo = minDeliveryDaysRepo;
         _maxDeliveryDaysRepo = maxDeliveryDaysRepo;
+        _allowBookingRepo = allowBookingRepo;
+        _allowDeliveryRepo = allowDeliveryRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -772,6 +776,126 @@ public class AdminController : ControllerBase
                 Id = maxDays.Id,
                 Days = maxDays.Days,
                 CountWorkingDaysOnly = maxDays.CountWorkingDaysOnly
+            }
+        });
+    }
+
+    [HttpGet("allow-booking")]
+    public async Task<ActionResult<AllowBookingResponse>> GetAllowBooking(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var allowBooking = await _allowBookingRepo.GetAsync();
+        if (allowBooking == null)
+        {
+            return NotFound(new AllowBookingResponse
+            {
+                Success = false,
+                Message = "Allow booking not configured."
+            });
+        }
+
+        return Ok(new AllowBookingResponse
+        {
+            Success = true,
+            Message = "Allow booking retrieved.",
+            AllowBooking = new AllowBookingInfo
+            {
+                Id = allowBooking.Id,
+                IsAllowed = allowBooking.IsAllowed
+            }
+        });
+    }
+
+    [HttpPatch("allow-booking")]
+    public async Task<ActionResult<AllowBookingResponse>> UpdateAllowBooking(
+        [FromBody] UpdateAllowBookingRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var allowBooking = await _allowBookingRepo.GetAsync();
+        if (allowBooking == null)
+        {
+            return NotFound(new AllowBookingResponse
+            {
+                Success = false,
+                Message = "Allow booking not configured."
+            });
+        }
+
+        allowBooking.IsAllowed = request.IsAllowed;
+        await _allowBookingRepo.UpdateAsync(allowBooking);
+
+        return Ok(new AllowBookingResponse
+        {
+            Success = true,
+            Message = "Allow booking updated.",
+            AllowBooking = new AllowBookingInfo
+            {
+                Id = allowBooking.Id,
+                IsAllowed = allowBooking.IsAllowed
+            }
+        });
+    }
+
+    [HttpGet("allow-delivery")]
+    public async Task<ActionResult<AllowDeliveryResponse>> GetAllowDelivery(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var allowDelivery = await _allowDeliveryRepo.GetAsync();
+        if (allowDelivery == null)
+        {
+            return NotFound(new AllowDeliveryResponse
+            {
+                Success = false,
+                Message = "Allow delivery not configured."
+            });
+        }
+
+        return Ok(new AllowDeliveryResponse
+        {
+            Success = true,
+            Message = "Allow delivery retrieved.",
+            AllowDelivery = new AllowDeliveryInfo
+            {
+                Id = allowDelivery.Id,
+                IsAllowed = allowDelivery.IsAllowed
+            }
+        });
+    }
+
+    [HttpPatch("allow-delivery")]
+    public async Task<ActionResult<AllowDeliveryResponse>> UpdateAllowDelivery(
+        [FromBody] UpdateAllowDeliveryRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var allowDelivery = await _allowDeliveryRepo.GetAsync();
+        if (allowDelivery == null)
+        {
+            return NotFound(new AllowDeliveryResponse
+            {
+                Success = false,
+                Message = "Allow delivery not configured."
+            });
+        }
+
+        allowDelivery.IsAllowed = request.IsAllowed;
+        await _allowDeliveryRepo.UpdateAsync(allowDelivery);
+
+        return Ok(new AllowDeliveryResponse
+        {
+            Success = true,
+            Message = "Allow delivery updated.",
+            AllowDelivery = new AllowDeliveryInfo
+            {
+                Id = allowDelivery.Id,
+                IsAllowed = allowDelivery.IsAllowed
             }
         });
     }

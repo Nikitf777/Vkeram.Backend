@@ -19,6 +19,8 @@ public class AppDbContext : DbContext
     public DbSet<MaximumBookingDays> MaximumBookingDays => Set<MaximumBookingDays>();
     public DbSet<MinimumDeliveryDays> MinimumDeliveryDays => Set<MinimumDeliveryDays>();
     public DbSet<MaximumDeliveryDays> MaximumDeliveryDays => Set<MaximumDeliveryDays>();
+    public DbSet<AllowBooking> AllowBooking => Set<AllowBooking>();
+    public DbSet<AllowDelivery> AllowDelivery => Set<AllowDelivery>();
     public DbSet<ProductPrice> ProductPrices => Set<ProductPrice>();
     public DbSet<ProductImage> ProductImages => Set<ProductImage>();
     public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
@@ -90,6 +92,16 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<MaximumDeliveryDays>(entity =>
         {
             entity.HasData(new MaximumDeliveryDays { Id = 1, Days = 30, CountWorkingDaysOnly = false });
+        });
+
+        modelBuilder.Entity<AllowBooking>(entity =>
+        {
+            entity.HasData(new AllowBooking { Id = 1, IsAllowed = true });
+        });
+
+        modelBuilder.Entity<AllowDelivery>(entity =>
+        {
+            entity.HasData(new AllowDelivery { Id = 1, IsAllowed = true });
         });
 
         modelBuilder.Entity<ProductPrice>(entity =>

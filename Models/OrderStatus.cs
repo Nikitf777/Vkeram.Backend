@@ -1,12 +1,5 @@
 namespace Vkeram.Backend.Models;
 
-public enum ConfirmationStatus
-{
-    Confirmed,
-    Unconfirmed,
-    Cancelled
-}
-
 public enum PaymentStatus
 {
     Paid,

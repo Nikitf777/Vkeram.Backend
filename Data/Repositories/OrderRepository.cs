@@ -48,7 +48,7 @@ public class OrderRepository : IOrderRepository
     {
         var query = _db.OrderReservations
             .Include(r => r.Order)
-            .Where(r => r.Order.ConfirmationStatus != "Cancelled")
+            .Where(r => r.Order.IsConfirmed)
             .AsQueryable();
 
         if (from.HasValue)

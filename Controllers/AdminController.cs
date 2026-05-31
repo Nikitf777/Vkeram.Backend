@@ -223,7 +223,7 @@ public class AdminController : ControllerBase
         var result = orders.Select(o => new
         {
             o.Id,
-            o.ConfirmationStatus,
+            o.IsConfirmed,
             o.PaymentStatus,
             o.ShipmentStatus,
             o.CreatedAt,
@@ -248,7 +248,7 @@ public class AdminController : ControllerBase
             o.Id,
             UserBuyerId = o.User.BuyerId,
             UserEmail = o.User.ContactEmail,
-            o.ConfirmationStatus,
+            o.IsConfirmed,
             o.PaymentStatus,
             o.ShipmentStatus,
             o.CreatedAt,
@@ -287,7 +287,7 @@ public class AdminController : ControllerBase
             Success = true,
             Message = "Order retrieved.",
             OrderId = order.Id,
-            ConfirmationStatus = order.ConfirmationStatus,
+            IsConfirmed = order.IsConfirmed,
             PaymentStatus = order.PaymentStatus,
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,
@@ -327,25 +327,14 @@ public class AdminController : ControllerBase
     private ActionResult UnauthorizedResponse() =>
         Unauthorized(new { Success = false, Message = "Invalid admin key." });
 
-    private static readonly string[] ValidConfirmationStatuses = ["Confirmed"];
     private static readonly string[] ValidPaymentStatuses = ["Paid", "PartiallyPaid", "Unpaid"];
 
-    [HttpPatch("orders/{orderId}/confirmation")]
-    public async Task<ActionResult<AdminOrderResponse>> UpdateConfirmationStatus(
+    [HttpPost("orders/{orderId}/confirm")]
+    public async Task<ActionResult<AdminOrderResponse>> ConfirmOrder(
         int orderId,
-        [FromBody] UpdateOrderStatusRequest request,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
-
-        if (!ValidConfirmationStatuses.Contains(request.Status))
-        {
-            return BadRequest(new AdminOrderResponse
-            {
-                Success = false,
-                Message = $"Invalid confirmation status. Valid values: {string.Join(", ", ValidConfirmationStatuses)}."
-            });
-        }
 
         var order = await _orderRepo.GetByIdAsync(orderId);
         if (order == null)
@@ -357,7 +346,7 @@ public class AdminController : ControllerBase
             });
         }
 
-        if (order.ConfirmationStatus == Models.ConfirmationStatus.Confirmed.ToString())
+        if (order.IsConfirmed)
         {
             return BadRequest(new AdminOrderResponse
             {
@@ -405,16 +394,16 @@ public class AdminController : ControllerBase
             });
         }
 
-        order.ConfirmationStatus = request.Status;
+        order.IsConfirmed = true;
         order.BillId = billId;
         await _orderRepo.UpdateAsync(order);
 
         return Ok(new AdminOrderResponse
         {
             Success = true,
-            Message = "Confirmation status updated.",
+            Message = "Order confirmed.",
             OrderId = order.Id,
-            ConfirmationStatus = order.ConfirmationStatus,
+            IsConfirmed = order.IsConfirmed,
             PaymentStatus = order.PaymentStatus,
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,
@@ -457,7 +446,7 @@ public class AdminController : ControllerBase
             Success = true,
             Message = "Payment status updated.",
             OrderId = order.Id,
-            ConfirmationStatus = order.ConfirmationStatus,
+            IsConfirmed = order.IsConfirmed,
             PaymentStatus = order.PaymentStatus,
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,

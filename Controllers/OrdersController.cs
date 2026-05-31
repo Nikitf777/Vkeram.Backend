@@ -99,7 +99,7 @@ public class OrdersController : ControllerBase
                 Success = true,
                 Message = "Order retrieved.",
                 OrderId = o.Id,
-                ConfirmationStatus = o.ConfirmationStatus,
+                IsConfirmed = o.IsConfirmed,
                 PaymentStatus = o.PaymentStatus,
                 ShipmentStatus = o.ShipmentStatus,
                 UserId = o.UserId,
@@ -164,7 +164,7 @@ public class OrdersController : ControllerBase
             Success = true,
             Message = "Order retrieved.",
             OrderId = o.Id,
-            ConfirmationStatus = o.ConfirmationStatus,
+            IsConfirmed = o.IsConfirmed,
             PaymentStatus = o.PaymentStatus,
             ShipmentStatus = o.ShipmentStatus,
             UserId = o.UserId,
@@ -451,7 +451,7 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             UserId = userId,
-            ConfirmationStatus = Models.ConfirmationStatus.Unconfirmed.ToString(),
+            IsConfirmed = false,
             PaymentStatus = Models.PaymentStatus.Unpaid.ToString()
         };
 
@@ -581,7 +581,7 @@ public class OrdersController : ControllerBase
                 var billId = await _billsService.CreateBillAsync(billRequest);
                 if (billId != null)
                 {
-                    order.ConfirmationStatus = Models.ConfirmationStatus.Confirmed.ToString();
+                    order.IsConfirmed = true;
                     order.BillId = billId;
                 }
             }
@@ -594,7 +594,7 @@ public class OrdersController : ControllerBase
             Success = true,
             Message = "Order created successfully.",
             OrderId = order.Id,
-            ConfirmationStatus = order.ConfirmationStatus,
+            IsConfirmed = order.IsConfirmed,
             PaymentStatus = order.PaymentStatus,
             ShipmentStatus = order.ShipmentStatus,
             UserId = order.UserId,

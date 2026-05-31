@@ -12,8 +12,7 @@ public class Order
     [ForeignKey(nameof(UserId))]
     public User User { get; set; } = null!;
 
-    [Required, MaxLength(50)]
-    public string ConfirmationStatus { get; set; } = Models.ConfirmationStatus.Confirmed.ToString();
+    public bool IsConfirmed { get; set; } = false;
 
     [MaxLength(200)]
     public string? BillId { get; set; }

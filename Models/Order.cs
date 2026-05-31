@@ -15,6 +15,9 @@ public class Order
     [Required, MaxLength(50)]
     public string ConfirmationStatus { get; set; } = Models.ConfirmationStatus.Confirmed.ToString();
 
+    [MaxLength(200)]
+    public string? BillId { get; set; }
+
     [Required, MaxLength(50)]
     public string PaymentStatus { get; set; } = Models.PaymentStatus.Unpaid.ToString();
 

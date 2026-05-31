@@ -24,6 +24,7 @@ public class AdminController : ControllerBase
     private readonly IReservationDurationRepository _reservationDurationRepo;
     private readonly IOrderLimitsRepository _orderLimitsRepo;
     private readonly IAutoConfirmOrdersRepository _autoConfirmOrdersRepo;
+    private readonly IBillsService _billsService;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
@@ -33,7 +34,7 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -49,6 +50,7 @@ public class AdminController : ControllerBase
         _reservationDurationRepo = reservationDurationRepo;
         _orderLimitsRepo = orderLimitsRepo;
         _autoConfirmOrdersRepo = autoConfirmOrdersRepo;
+        _billsService = billsService;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -325,7 +327,7 @@ public class AdminController : ControllerBase
     private ActionResult UnauthorizedResponse() =>
         Unauthorized(new { Success = false, Message = "Invalid admin key." });
 
-    private static readonly string[] ValidConfirmationStatuses = ["Confirmed", "Unconfirmed", "Cancelled"];
+    private static readonly string[] ValidConfirmationStatuses = ["Confirmed"];
     private static readonly string[] ValidPaymentStatuses = ["Paid", "PartiallyPaid", "Unpaid"];
 
     [HttpPatch("orders/{orderId}/confirmation")]
@@ -355,7 +357,56 @@ public class AdminController : ControllerBase
             });
         }
 
+        if (order.ConfirmationStatus == Models.ConfirmationStatus.Confirmed.ToString())
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "Order is already confirmed."
+            });
+        }
+
+        var user = await _userRepo.GetByIdAsync(order.UserId);
+        if (user == null)
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "User not found."
+            });
+        }
+
+        var billProducts = order.Reservations
+            .SelectMany(r => r.ProductReservations)
+            .Concat(order.Deliveries.SelectMany(d => d.ProductReservations))
+            .GroupBy(pr => pr.ProductId)
+            .Select(g => new BillProductDto
+            {
+                Id = g.Key,
+                Quantity = g.Sum(pr => pr.Quantity),
+                Price = g.First().ProductPrice?.Price ?? 0,
+                DiscountPercent = 0
+            })
+            .ToList();
+
+        var billRequest = new CreateBillRequest
+        {
+            BuyerId = user.BuyerId,
+            Products = billProducts
+        };
+
+        var billId = await _billsService.CreateBillAsync(billRequest);
+        if (billId == null)
+        {
+            return BadRequest(new AdminOrderResponse
+            {
+                Success = false,
+                Message = "Failed to create bill."
+            });
+        }
+
         order.ConfirmationStatus = request.Status;
+        order.BillId = billId;
         await _orderRepo.UpdateAsync(order);
 
         return Ok(new AdminOrderResponse

@@ -26,8 +26,10 @@ public class OrdersController : ControllerBase
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
     private readonly IOrderLimitsRepository _orderLimitsRepo;
     private readonly IAutoConfirmOrdersRepository _autoConfirmOrdersRepo;
+    private readonly IBillsService _billsService;
+    private readonly IUserRepository _userRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IUserRepository userRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -42,6 +44,8 @@ public class OrdersController : ControllerBase
         _allowDeliveryRepo = allowDeliveryRepo;
         _orderLimitsRepo = orderLimitsRepo;
         _autoConfirmOrdersRepo = autoConfirmOrdersRepo;
+        _billsService = billsService;
+        _userRepo = userRepo;
     }
 
     [HttpGet]
@@ -447,7 +451,7 @@ public class OrdersController : ControllerBase
         var order = new Order
         {
             UserId = userId,
-            ConfirmationStatus = Models.ConfirmationStatus.Confirmed.ToString(),
+            ConfirmationStatus = Models.ConfirmationStatus.Unconfirmed.ToString(),
             PaymentStatus = Models.PaymentStatus.Unpaid.ToString()
         };
 
@@ -539,6 +543,48 @@ public class OrdersController : ControllerBase
             }
 
             order.Deliveries.Add(delivery);
+        }
+
+        var autoConfirmSettings = await _autoConfirmOrdersRepo.GetAsync();
+        var shouldAutoConfirm = false;
+
+        if (autoConfirmSettings != null && autoConfirmSettings.IsEnabled)
+        {
+            shouldAutoConfirm = order.TotalPrice <= autoConfirmSettings.MaxAutoConfirmPrice
+                && order.TotalQuantity <= autoConfirmSettings.MaxAutoConfirmQuantity;
+        }
+
+        if (shouldAutoConfirm)
+        {
+            var user = await _userRepo.GetByIdAsync(userId);
+            if (user != null)
+            {
+                var billProducts = order.Reservations
+                    .SelectMany(r => r.ProductReservations)
+                    .Concat(order.Deliveries.SelectMany(d => d.ProductReservations))
+                    .GroupBy(pr => pr.ProductId)
+                    .Select(g => new BillProductDto
+                    {
+                        Id = g.Key,
+                        Quantity = g.Sum(pr => pr.Quantity),
+                        Price = g.First().ProductPrice?.Price ?? 0,
+                        DiscountPercent = 0
+                    })
+                    .ToList();
+
+                var billRequest = new CreateBillRequest
+                {
+                    BuyerId = user.BuyerId,
+                    Products = billProducts
+                };
+
+                var billId = await _billsService.CreateBillAsync(billRequest);
+                if (billId != null)
+                {
+                    order.ConfirmationStatus = Models.ConfirmationStatus.Confirmed.ToString();
+                    order.BillId = billId;
+                }
+            }
         }
 
         await _orderRepo.CreateAsync(order);

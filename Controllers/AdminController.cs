@@ -88,7 +88,7 @@ public class AdminController : ControllerBase
             invites.Add(new InviteCode
             {
                 Code = code,
-                CompanyName = request.CompanyName,
+                 BuyerId = request.BuyerId,
                 ExpiresAt = expiresAt
             });
             codes.Add(code);
@@ -121,11 +121,11 @@ public class AdminController : ControllerBase
         {
             i.Id,
             i.Code,
-            i.CompanyName,
+            i.BuyerId,
             i.IsUsed,
             i.IsRevoked,
             i.UsedByUserId,
-            UsedByCompanyName = i.UsedByUserId.HasValue && usersById.TryGetValue(i.UsedByUserId.Value, out var u) ? u.CompanyName : null,
+            UsedByBuyerId = i.UsedByUserId.HasValue && usersById.TryGetValue(i.UsedByUserId.Value, out var u) ? u.BuyerId : null,
             i.CreatedAt,
             i.UsedAt,
             i.ExpiresAt
@@ -164,7 +164,7 @@ public class AdminController : ControllerBase
         var result = users.Select(u => new
         {
             u.Id,
-            u.CompanyName,
+            u.BuyerId,
             u.ContactEmail,
             u.ContactName,
             u.Phone,
@@ -192,7 +192,7 @@ public class AdminController : ControllerBase
             User = new
             {
                 user.Id,
-                user.CompanyName,
+                user.BuyerId,
                 user.ContactEmail,
                 user.ContactName,
                 user.Phone,
@@ -240,7 +240,7 @@ public class AdminController : ControllerBase
         var result = orders.Select(o => new
         {
             o.Id,
-            UserCompany = o.User.CompanyName,
+            UserBuyerId = o.User.BuyerId,
             UserEmail = o.User.ContactEmail,
             o.ConfirmationStatus,
             o.PaymentStatus,

@@ -6,8 +6,8 @@ public class User
 {
     public int Id { get; set; }
 
-    [Required, MaxLength(100)]
-    public string CompanyName { get; set; } = string.Empty;
+    [Required, MaxLength(200)]
+    public string BuyerId { get; set; } = string.Empty;
 
     [Required, MaxLength(200)]
     public string ContactEmail { get; set; } = string.Empty;

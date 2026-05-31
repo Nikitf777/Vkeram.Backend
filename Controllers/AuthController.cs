@@ -59,7 +59,7 @@ public class AuthController : ControllerBase
 
         var user = new User
         {
-            CompanyName = request.CompanyName,
+            BuyerId = invite.BuyerId ?? string.Empty,
             ContactEmail = request.ContactEmail,
             ContactName = request.ContactName,
             Phone = request.Phone,
@@ -76,7 +76,7 @@ public class AuthController : ControllerBase
             Success = true,
             Message = "Registration successful.",
             UserId = user.Id,
-            CompanyName = user.CompanyName,
+            BuyerId = user.BuyerId,
             Token = token
         });
     }
@@ -102,7 +102,7 @@ public class AuthController : ControllerBase
             Success = true,
             Message = "Login successful.",
             UserId = user.Id,
-            CompanyName = user.CompanyName,
+            BuyerId = user.BuyerId,
             Token = token
         });
     }
@@ -117,7 +117,7 @@ public class AuthController : ControllerBase
         {
             new Claim(ClaimTypes.NameIdentifier, user.Id.ToString()),
             new Claim(ClaimTypes.Email, user.ContactEmail),
-            new Claim("companyName", user.CompanyName)
+            new Claim("buyerId", user.BuyerId)
         };
 
         var token = new JwtSecurityToken(
@@ -137,14 +137,14 @@ public class AuthController : ControllerBase
     {
         var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
         var email = User.FindFirst(ClaimTypes.Email)?.Value;
-        var companyName = User.FindFirst("companyName")?.Value;
+        var buyerId = User.FindFirst("buyerId")?.Value;
 
         return Ok(new AuthResponse
         {
             Success = true,
             Message = "Token is valid.",
             UserId = int.Parse(userId!),
-            CompanyName = companyName,
+            BuyerId = buyerId,
             Token = Request.Headers.Authorization.ToString().Replace("Bearer ", "")
         });
     }

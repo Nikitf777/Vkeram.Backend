@@ -10,7 +10,7 @@ public class InviteCode
     public string Code { get; set; } = string.Empty;
 
     [MaxLength(200)]
-    public string? CompanyName { get; set; }
+    public string? BuyerId { get; set; }
 
     public bool IsUsed { get; set; } = false;
 

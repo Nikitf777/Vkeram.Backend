@@ -23,6 +23,7 @@ public class AdminController : ControllerBase
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
     private readonly IReservationDurationRepository _reservationDurationRepo;
     private readonly IOrderLimitsRepository _orderLimitsRepo;
+    private readonly IAutoConfirmOrdersRepository _autoConfirmOrdersRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
@@ -32,7 +33,7 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -47,6 +48,7 @@ public class AdminController : ControllerBase
         _allowDeliveryRepo = allowDeliveryRepo;
         _reservationDurationRepo = reservationDurationRepo;
         _orderLimitsRepo = orderLimitsRepo;
+        _autoConfirmOrdersRepo = autoConfirmOrdersRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -1548,6 +1550,77 @@ public class AdminController : ControllerBase
                 MaxDeliveryQuantity = limits.MaxDeliveryQuantity,
                 MinProductReservationQuantity = limits.MinProductReservationQuantity,
                 MaxProductReservationQuantity = limits.MaxProductReservationQuantity
+            }
+        });
+    }
+
+    [HttpGet("auto-confirm-orders")]
+    public async Task<ActionResult<AutoConfirmOrdersResponse>> GetAutoConfirmOrders(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var settings = await _autoConfirmOrdersRepo.GetAsync();
+        if (settings == null)
+        {
+            return NotFound(new AutoConfirmOrdersResponse
+            {
+                Success = false,
+                Message = "Auto-confirm orders not configured."
+            });
+        }
+
+        return Ok(new AutoConfirmOrdersResponse
+        {
+            Success = true,
+            Message = "Auto-confirm orders retrieved.",
+            AutoConfirmOrders = new AutoConfirmOrdersInfo
+            {
+                Id = settings.Id,
+                IsEnabled = settings.IsEnabled,
+                MaxAutoConfirmPrice = settings.MaxAutoConfirmPrice,
+                MaxAutoConfirmQuantity = settings.MaxAutoConfirmQuantity
+            }
+        });
+    }
+
+    [HttpPatch("auto-confirm-orders")]
+    public async Task<ActionResult<AutoConfirmOrdersResponse>> UpdateAutoConfirmOrders(
+        [FromBody] UpdateAutoConfirmOrdersRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.MaxAutoConfirmPrice < 0)
+            return BadRequest(new AutoConfirmOrdersResponse { Success = false, Message = "MaxAutoConfirmPrice must be non-negative." });
+        if (request.MaxAutoConfirmQuantity < 0)
+            return BadRequest(new AutoConfirmOrdersResponse { Success = false, Message = "MaxAutoConfirmQuantity must be non-negative." });
+
+        var settings = await _autoConfirmOrdersRepo.GetAsync();
+        if (settings == null)
+        {
+            return NotFound(new AutoConfirmOrdersResponse
+            {
+                Success = false,
+                Message = "Auto-confirm orders not configured."
+            });
+        }
+
+        settings.IsEnabled = request.IsEnabled;
+        settings.MaxAutoConfirmPrice = request.MaxAutoConfirmPrice;
+        settings.MaxAutoConfirmQuantity = request.MaxAutoConfirmQuantity;
+        await _autoConfirmOrdersRepo.UpdateAsync(settings);
+
+        return Ok(new AutoConfirmOrdersResponse
+        {
+            Success = true,
+            Message = "Auto-confirm orders updated.",
+            AutoConfirmOrders = new AutoConfirmOrdersInfo
+            {
+                Id = settings.Id,
+                IsEnabled = settings.IsEnabled,
+                MaxAutoConfirmPrice = settings.MaxAutoConfirmPrice,
+                MaxAutoConfirmQuantity = settings.MaxAutoConfirmQuantity
             }
         });
     }

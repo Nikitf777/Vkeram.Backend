@@ -28,6 +28,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
     public DbSet<ReservationDuration> ReservationDuration => Set<ReservationDuration>();
     public DbSet<OrderLimits> OrderLimits => Set<OrderLimits>();
+    public DbSet<AutoConfirmOrders> AutoConfirmOrders => Set<AutoConfirmOrders>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -147,6 +148,17 @@ public class AppDbContext : DbContext
                 MaxDeliveryQuantity = 100,
                 MinProductReservationQuantity = 1,
                 MaxProductReservationQuantity = 1000
+            });
+        });
+
+        modelBuilder.Entity<AutoConfirmOrders>(entity =>
+        {
+            entity.HasData(new AutoConfirmOrders
+            {
+                Id = 1,
+                IsEnabled = false,
+                MaxAutoConfirmPrice = 10000,
+                MaxAutoConfirmQuantity = 100
             });
         });
 

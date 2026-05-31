@@ -25,8 +25,9 @@ public class OrdersController : ControllerBase
     private readonly IAllowBookingRepository _allowBookingRepo;
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
     private readonly IOrderLimitsRepository _orderLimitsRepo;
+    private readonly IAutoConfirmOrdersRepository _autoConfirmOrdersRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -40,6 +41,7 @@ public class OrdersController : ControllerBase
         _allowBookingRepo = allowBookingRepo;
         _allowDeliveryRepo = allowDeliveryRepo;
         _orderLimitsRepo = orderLimitsRepo;
+        _autoConfirmOrdersRepo = autoConfirmOrdersRepo;
     }
 
     [HttpGet]
@@ -688,6 +690,33 @@ public class OrdersController : ControllerBase
                 MaxDeliveryQuantity = limits.MaxDeliveryQuantity,
                 MinProductReservationQuantity = limits.MinProductReservationQuantity,
                 MaxProductReservationQuantity = limits.MaxProductReservationQuantity
+            }
+        });
+    }
+
+    [HttpGet("auto-confirm-orders")]
+    public async Task<ActionResult<AutoConfirmOrdersResponse>> GetAutoConfirmOrders()
+    {
+        var settings = await _autoConfirmOrdersRepo.GetAsync();
+        if (settings == null)
+        {
+            return NotFound(new AutoConfirmOrdersResponse
+            {
+                Success = false,
+                Message = "Auto-confirm orders not configured."
+            });
+        }
+
+        return Ok(new AutoConfirmOrdersResponse
+        {
+            Success = true,
+            Message = "Auto-confirm orders retrieved.",
+            AutoConfirmOrders = new AutoConfirmOrdersInfo
+            {
+                Id = settings.Id,
+                IsEnabled = settings.IsEnabled,
+                MaxAutoConfirmPrice = settings.MaxAutoConfirmPrice,
+                MaxAutoConfirmQuantity = settings.MaxAutoConfirmQuantity
             }
         });
     }

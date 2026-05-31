@@ -35,6 +35,7 @@ builder.Services.AddScoped<IProductPriceRepository, ProductPriceRepository>();
 builder.Services.AddScoped<IProductImageRepository, ProductImageRepository>();
 builder.Services.AddScoped<IProductImagePreviewRepository, ProductImagePreviewRepository>();
 builder.Services.AddScoped<IReservationDurationRepository, ReservationDurationRepository>();
+builder.Services.AddScoped<IOrderLimitsRepository, OrderLimitsRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();
 builder.Services.AddScoped<IImagePreviewService, ImagePreviewService>();
 builder.Services.AddHttpContextAccessor();

@@ -22,6 +22,7 @@ public class AdminController : ControllerBase
     private readonly IAllowBookingRepository _allowBookingRepo;
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
     private readonly IReservationDurationRepository _reservationDurationRepo;
+    private readonly IOrderLimitsRepository _orderLimitsRepo;
     private readonly IProductPriceRepository _productPriceRepo;
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
@@ -31,7 +32,7 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -45,6 +46,7 @@ public class AdminController : ControllerBase
         _allowBookingRepo = allowBookingRepo;
         _allowDeliveryRepo = allowDeliveryRepo;
         _reservationDurationRepo = reservationDurationRepo;
+        _orderLimitsRepo = orderLimitsRepo;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
@@ -1440,6 +1442,114 @@ public class AdminController : ControllerBase
             return NotFound(new { Success = false, Message = "Characteristics not found." });
 
         return Ok(new { Success = true, Message = "Characteristics deleted." });
+    }
+
+    [HttpGet("order-limits")]
+    public async Task<ActionResult<OrderLimitsResponse>> GetOrderLimits(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var limits = await _orderLimitsRepo.GetAsync();
+        if (limits == null)
+        {
+            return NotFound(new OrderLimitsResponse
+            {
+                Success = false,
+                Message = "Order limits not configured."
+            });
+        }
+
+        return Ok(new OrderLimitsResponse
+        {
+            Success = true,
+            Message = "Order limits retrieved.",
+            OrderLimits = new OrderLimitsInfo
+            {
+                Id = limits.Id,
+                MinOrderPrice = limits.MinOrderPrice,
+                MaxOrderPrice = limits.MaxOrderPrice,
+                MinOrderQuantity = limits.MinOrderQuantity,
+                MaxOrderQuantity = limits.MaxOrderQuantity,
+                MinReservationQuantity = limits.MinReservationQuantity,
+                MaxReservationQuantity = limits.MaxReservationQuantity,
+                MinDeliveryQuantity = limits.MinDeliveryQuantity,
+                MaxDeliveryQuantity = limits.MaxDeliveryQuantity,
+                MinProductReservationQuantity = limits.MinProductReservationQuantity,
+                MaxProductReservationQuantity = limits.MaxProductReservationQuantity
+            }
+        });
+    }
+
+    [HttpPatch("order-limits")]
+    public async Task<ActionResult<OrderLimitsResponse>> UpdateOrderLimits(
+        [FromBody] UpdateOrderLimitsRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        if (request.MinOrderPrice < 0)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MinOrderPrice must be non-negative." });
+        if (request.MaxOrderPrice < request.MinOrderPrice)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MaxOrderPrice must be >= MinOrderPrice." });
+        if (request.MinOrderQuantity < 0)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MinOrderQuantity must be non-negative." });
+        if (request.MaxOrderQuantity < request.MinOrderQuantity)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MaxOrderQuantity must be >= MinOrderQuantity." });
+        if (request.MinReservationQuantity < 0)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MinReservationQuantity must be non-negative." });
+        if (request.MaxReservationQuantity < request.MinReservationQuantity)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MaxReservationQuantity must be >= MinReservationQuantity." });
+        if (request.MinDeliveryQuantity < 0)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MinDeliveryQuantity must be non-negative." });
+        if (request.MaxDeliveryQuantity < request.MinDeliveryQuantity)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MaxDeliveryQuantity must be >= MinDeliveryQuantity." });
+        if (request.MinProductReservationQuantity < 0)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MinProductReservationQuantity must be non-negative." });
+        if (request.MaxProductReservationQuantity < request.MinProductReservationQuantity)
+            return BadRequest(new OrderLimitsResponse { Success = false, Message = "MaxProductReservationQuantity must be >= MinProductReservationQuantity." });
+
+        var limits = await _orderLimitsRepo.GetAsync();
+        if (limits == null)
+        {
+            return NotFound(new OrderLimitsResponse
+            {
+                Success = false,
+                Message = "Order limits not configured."
+            });
+        }
+
+        limits.MinOrderPrice = request.MinOrderPrice;
+        limits.MaxOrderPrice = request.MaxOrderPrice;
+        limits.MinOrderQuantity = request.MinOrderQuantity;
+        limits.MaxOrderQuantity = request.MaxOrderQuantity;
+        limits.MinReservationQuantity = request.MinReservationQuantity;
+        limits.MaxReservationQuantity = request.MaxReservationQuantity;
+        limits.MinDeliveryQuantity = request.MinDeliveryQuantity;
+        limits.MaxDeliveryQuantity = request.MaxDeliveryQuantity;
+        limits.MinProductReservationQuantity = request.MinProductReservationQuantity;
+        limits.MaxProductReservationQuantity = request.MaxProductReservationQuantity;
+        await _orderLimitsRepo.UpdateAsync(limits);
+
+        return Ok(new OrderLimitsResponse
+        {
+            Success = true,
+            Message = "Order limits updated.",
+            OrderLimits = new OrderLimitsInfo
+            {
+                Id = limits.Id,
+                MinOrderPrice = limits.MinOrderPrice,
+                MaxOrderPrice = limits.MaxOrderPrice,
+                MinOrderQuantity = limits.MinOrderQuantity,
+                MaxOrderQuantity = limits.MaxOrderQuantity,
+                MinReservationQuantity = limits.MinReservationQuantity,
+                MaxReservationQuantity = limits.MaxReservationQuantity,
+                MinDeliveryQuantity = limits.MinDeliveryQuantity,
+                MaxDeliveryQuantity = limits.MaxDeliveryQuantity,
+                MinProductReservationQuantity = limits.MinProductReservationQuantity,
+                MaxProductReservationQuantity = limits.MaxProductReservationQuantity
+            }
+        });
     }
 
     private static ProductCharacteristicDto MapCharacteristicToDto(ProductCharacteristic c) => new()

@@ -27,6 +27,7 @@ public class AppDbContext : DbContext
     public DbSet<ProductImagePreview> ProductImagePreviews => Set<ProductImagePreview>();
     public DbSet<ProductCharacteristic> ProductCharacteristics => Set<ProductCharacteristic>();
     public DbSet<ReservationDuration> ReservationDuration => Set<ReservationDuration>();
+    public DbSet<OrderLimits> OrderLimits => Set<OrderLimits>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -129,6 +130,24 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ReservationDuration>(entity =>
         {
             entity.HasData(new ReservationDuration { Id = 1, DurationMinutes = 30 });
+        });
+
+        modelBuilder.Entity<OrderLimits>(entity =>
+        {
+            entity.HasData(new OrderLimits
+            {
+                Id = 1,
+                MinOrderPrice = 0,
+                MaxOrderPrice = 1000000,
+                MinOrderQuantity = 1,
+                MaxOrderQuantity = 10000,
+                MinReservationQuantity = 1,
+                MaxReservationQuantity = 100,
+                MinDeliveryQuantity = 1,
+                MaxDeliveryQuantity = 100,
+                MinProductReservationQuantity = 1,
+                MaxProductReservationQuantity = 1000
+            });
         });
 
         modelBuilder.Entity<ProductImagePreview>(entity =>

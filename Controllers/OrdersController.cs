@@ -24,8 +24,9 @@ public class OrdersController : ControllerBase
     private readonly IReservationDurationRepository _reservationDurationRepo;
     private readonly IAllowBookingRepository _allowBookingRepo;
     private readonly IAllowDeliveryRepository _allowDeliveryRepo;
+    private readonly IOrderLimitsRepository _orderLimitsRepo;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -38,6 +39,7 @@ public class OrdersController : ControllerBase
         _reservationDurationRepo = reservationDurationRepo;
         _allowBookingRepo = allowBookingRepo;
         _allowDeliveryRepo = allowDeliveryRepo;
+        _orderLimitsRepo = orderLimitsRepo;
     }
 
     [HttpGet]
@@ -652,6 +654,40 @@ public class OrdersController : ControllerBase
             {
                 Id = allowDelivery.Id,
                 IsAllowed = allowDelivery.IsAllowed
+            }
+        });
+    }
+
+    [HttpGet("order-limits")]
+    public async Task<ActionResult<OrderLimitsResponse>> GetOrderLimits()
+    {
+        var limits = await _orderLimitsRepo.GetAsync();
+        if (limits == null)
+        {
+            return NotFound(new OrderLimitsResponse
+            {
+                Success = false,
+                Message = "Order limits not configured."
+            });
+        }
+
+        return Ok(new OrderLimitsResponse
+        {
+            Success = true,
+            Message = "Order limits retrieved.",
+            OrderLimits = new OrderLimitsInfo
+            {
+                Id = limits.Id,
+                MinOrderPrice = limits.MinOrderPrice,
+                MaxOrderPrice = limits.MaxOrderPrice,
+                MinOrderQuantity = limits.MinOrderQuantity,
+                MaxOrderQuantity = limits.MaxOrderQuantity,
+                MinReservationQuantity = limits.MinReservationQuantity,
+                MaxReservationQuantity = limits.MaxReservationQuantity,
+                MinDeliveryQuantity = limits.MinDeliveryQuantity,
+                MaxDeliveryQuantity = limits.MaxDeliveryQuantity,
+                MinProductReservationQuantity = limits.MinProductReservationQuantity,
+                MaxProductReservationQuantity = limits.MaxProductReservationQuantity
             }
         });
     }

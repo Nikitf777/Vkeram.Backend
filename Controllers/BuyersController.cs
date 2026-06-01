@@ -29,15 +29,24 @@ public class BuyersController : ControllerBase
             return Unauthorized(new { Success = false, Message = "Invalid admin key." });
 
         var buyers = await _buyersService.GetAllAsync();
+        var users = await _userRepo.GetAllAsync();
+        var userCountByBuyer = users.GroupBy(u => u.BuyerId).ToDictionary(g => g.Key, g => g.Count());
 
         if (onlyWithUsers)
         {
-            var users = await _userRepo.GetAllAsync();
-            var buyerIdsWithUsers = users.Select(u => u.BuyerId).ToHashSet();
-            buyers = buyers.Where(b => buyerIdsWithUsers.Contains(b.Id)).ToList();
+            buyers = buyers.Where(b => userCountByBuyer.ContainsKey(b.Id)).ToList();
         }
 
-        return Ok(new { Success = true, Buyers = buyers.Select(b => new { b.Id, b.Name }).ToList() });
+        return Ok(new
+        {
+            Success = true,
+            Buyers = buyers.Select(b => new
+            {
+                b.Id,
+                b.Name,
+                RegisteredUsers = userCountByBuyer.GetValueOrDefault(b.Id, 0)
+            }).ToList()
+        });
     }
 
     [HttpGet("{id}")]

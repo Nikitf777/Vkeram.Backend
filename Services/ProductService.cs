@@ -11,31 +11,36 @@ internal class RawProductDto
 public class ProductService : IProductService
 {
     private readonly HttpClient _httpClient;
+    private readonly string _productsPath;
 
-    public ProductService(HttpClient httpClient)
+    public ProductService(HttpClient httpClient, IConfiguration config)
     {
         _httpClient = httpClient;
+        _productsPath = config["OneC:ProductsPath"] ?? "/demo/hs/products";
     }
 
     public async Task<Dictionary<string, ProductDto>> GetByIdsAsync(IEnumerable<string> ids)
     {
-        var response = await _httpClient.GetAsync("");
-        response.EnsureSuccessStatusCode();
+        var tasks = ids.Select(async id =>
+        {
+            try
+            {
+                var product = await GetByIdAsync(id);
+                return product != null ? new KeyValuePair<string, ProductDto>(id, product) : default;
+            }
+            catch
+            {
+                return default;
+            }
+        });
 
-        var rawProducts = await response.Content.ReadFromJsonAsync<List<RawProductDto>>();
-
-        if (rawProducts == null)
-            return new Dictionary<string, ProductDto>();
-
-        var idSet = ids.ToHashSet();
+        var results = await Task.WhenAll(tasks);
         var result = new Dictionary<string, ProductDto>();
 
-        foreach (var raw in rawProducts)
+        foreach (var kvp in results)
         {
-            if (idSet.Contains(raw.Id))
-            {
-                result[raw.Id] = new ProductDto { Id = raw.Id, Name = raw.Name };
-            }
+            if (kvp.Key != null)
+                result[kvp.Key] = kvp.Value;
         }
 
         return result;
@@ -43,7 +48,7 @@ public class ProductService : IProductService
 
     public async Task<List<ProductDto>> GetAllAsync()
     {
-        var response = await _httpClient.GetAsync("");
+        var response = await _httpClient.GetAsync($"{_productsPath}/all");
         response.EnsureSuccessStatusCode();
 
         var rawProducts = await response.Content.ReadFromJsonAsync<List<RawProductDto>>();
@@ -56,7 +61,7 @@ public class ProductService : IProductService
 
     public async Task<ProductDto?> GetByIdAsync(string id)
     {
-        var response = await _httpClient.GetAsync(Uri.EscapeDataString(id));
+        var response = await _httpClient.GetAsync($"{_productsPath}/{Uri.EscapeDataString(id)}");
         response.EnsureSuccessStatusCode();
 
         var rawProduct = await response.Content.ReadFromJsonAsync<RawProductDto>();

@@ -676,6 +676,7 @@ public class OrdersController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpGet("allow-booking")]
     public async Task<ActionResult<AllowBookingResponse>> GetAllowBooking()
     {
@@ -701,6 +702,7 @@ public class OrdersController : ControllerBase
         });
     }
 
+    [AllowAnonymous]
     [HttpGet("allow-delivery")]
     public async Task<ActionResult<AllowDeliveryResponse>> GetAllowDelivery()
     {

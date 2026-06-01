@@ -354,8 +354,6 @@ public class OrdersController : ControllerBase
 
         var slots = payload.Reservations.Select(r =>
         {
-            if (r.StartTime.Kind == DateTimeKind.Unspecified)
-                r.StartTime = DateTime.SpecifyKind(r.StartTime, DateTimeKind.Utc);
             var day = DateOnly.FromDateTime(r.StartTime);
             var startTime = TimeOnly.FromDateTime(r.StartTime);
             var endTime = startTime.AddMinutes(reservationDuration);
@@ -505,10 +503,9 @@ public class OrdersController : ControllerBase
 
         foreach (var deliveryReq in payload.Deliveries)
         {
-            if (deliveryReq.DeliveryTime.Kind == DateTimeKind.Unspecified)
-                deliveryReq.DeliveryTime = DateTime.SpecifyKind(deliveryReq.DeliveryTime, DateTimeKind.Utc);
+            var deliveryDay = DateOnly.FromDateTime(deliveryReq.DeliveryTime);
 
-            if (!workingDayNames.Contains(deliveryReq.DeliveryTime.DayOfWeek.ToString()))
+            if (!workingDayNames.Contains(deliveryDay.DayOfWeek.ToString()))
             {
                 return BadRequest(new OrderResponse
                 {
@@ -517,7 +514,7 @@ public class OrdersController : ControllerBase
                 });
             }
 
-            if (earliestDeliveryDate.HasValue && DateOnly.FromDateTime(deliveryReq.DeliveryTime) < earliestDeliveryDate.Value)
+            if (earliestDeliveryDate.HasValue && deliveryDay < earliestDeliveryDate.Value)
             {
                 return BadRequest(new OrderResponse
                 {

@@ -1895,15 +1895,26 @@ public class AdminController : ControllerBase
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
         var reservations = await _orderRepo.GetReservationsAsync(minDate, maxDate);
-        var result = reservations.Select(r => new AdminReservationItem
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+        var users = await _userRepo.GetAllAsync();
+        var userMap = users.ToDictionary(u => u.Id, u => u.BuyerId);
+
+        var result = reservations.Select(r =>
         {
-            Id = r.Id,
-            Day = r.Day,
-            StartTime = r.StartTime,
-            EndTime = r.EndTime,
-            Picked = r.Picked,
-            OrderId = r.OrderId,
-            IsConfirmed = r.Order.IsConfirmed
+            var buyerId = userMap.GetValueOrDefault(r.Order.UserId);
+            return new AdminReservationItem
+            {
+                Id = r.Id,
+                Day = r.Day,
+                StartTime = r.StartTime,
+                EndTime = r.EndTime,
+                Picked = r.Picked,
+                OrderId = r.OrderId,
+                IsConfirmed = r.Order.IsConfirmed,
+                UserBuyerId = buyerId,
+                UserBuyerName = buyerId != null ? buyerMap.GetValueOrDefault(buyerId, buyerId) : null
+            };
         }).ToList();
 
         return Ok(new AdminReservationsResponse

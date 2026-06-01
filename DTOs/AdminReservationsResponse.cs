@@ -16,4 +16,6 @@ public class AdminReservationItem
     public bool Picked { get; set; }
     public int OrderId { get; set; }
     public bool IsConfirmed { get; set; }
+    public string? UserBuyerId { get; set; }
+    public string? UserBuyerName { get; set; }
 }

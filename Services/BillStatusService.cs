@@ -10,12 +10,12 @@ public class BillStatusService : IBillStatusService
     public BillStatusService(HttpClient httpClient, IConfiguration config)
     {
         _httpClient = httpClient;
-        _billsPath = config["OneC:BillsPath"] ?? "/demo/hs/bills/create";
+        _billsPath = config["OneC:BillsPath"] ?? "/demo/hs/bills";
     }
 
     public async Task<BillStatusResponse?> GetBillStatusAsync(string billId)
     {
-        var response = await _httpClient.GetAsync($"/demo/hs/bills/{billId}");
+        var response = await _httpClient.GetAsync($"{_billsPath}/{billId}");
         response.EnsureSuccessStatusCode();
         return await response.Content.ReadFromJsonAsync<BillStatusResponse>();
     }

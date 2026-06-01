@@ -10,12 +10,12 @@ public class BillsService : IBillsService
     public BillsService(HttpClient httpClient, IConfiguration config)
     {
         _httpClient = httpClient;
-        _billsPath = config["OneC:BillsPath"] ?? "/demo/hs/bills/create";
+        _billsPath = config["OneC:BillsPath"] ?? "/demo/hs/bills";
     }
 
     public async Task<string?> CreateBillAsync(CreateBillRequest request)
     {
-        var response = await _httpClient.PostAsJsonAsync(_billsPath, request);
+        var response = await _httpClient.PostAsJsonAsync($"{_billsPath}/create", request);
         response.EnsureSuccessStatusCode();
 
         var result = await response.Content.ReadFromJsonAsync<CreateBillResponse>();

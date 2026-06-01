@@ -16,9 +16,10 @@ public class ProductsController : ControllerBase
     private readonly IProductImagePreviewRepository _productImagePreviewRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
     private readonly IProductHiddenRepository _productHiddenRepo;
+    private readonly IHideProductsWithoutPriceRepository _hideProductsWithoutPriceRepo;
     private readonly string _baseUrl;
 
-    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductImagePreviewRepository productImagePreviewRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductHiddenRepository productHiddenRepo, IHttpContextAccessor httpContextAccessor)
+    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductImagePreviewRepository productImagePreviewRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductHiddenRepository productHiddenRepo, IHideProductsWithoutPriceRepository hideProductsWithoutPriceRepo, IHttpContextAccessor httpContextAccessor)
     {
         _productService = productService;
         _productPriceRepo = productPriceRepo;
@@ -26,6 +27,7 @@ public class ProductsController : ControllerBase
         _productImagePreviewRepo = productImagePreviewRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
         _productHiddenRepo = productHiddenRepo;
+        _hideProductsWithoutPriceRepo = hideProductsWithoutPriceRepo;
         var request = httpContextAccessor.HttpContext?.Request;
         _baseUrl = request != null ? $"{request.Scheme}://{request.Host}" : "";
     }
@@ -41,6 +43,12 @@ public class ProductsController : ControllerBase
 
         var latestPrices = await _productPriceRepo.GetLatestPerProductAsync();
         var priceMap = latestPrices.ToDictionary(p => p.ProductId);
+
+        var hideWithoutPriceSetting = await _hideProductsWithoutPriceRepo.GetAsync();
+        if (hideWithoutPriceSetting is { IsEnabled: true })
+        {
+            products = products.Where(p => priceMap.ContainsKey(p.Id)).ToList();
+        }
 
         List<ProductCharacteristicDto>? characteristics = null;
         if (include != ProductCharacteristicInclude.None)
@@ -94,6 +102,10 @@ public class ProductsController : ControllerBase
             return NotFound();
 
         var latestPrice = await _productPriceRepo.GetLatestForProductAsync(id);
+
+        var hideWithoutPriceSetting = await _hideProductsWithoutPriceRepo.GetAsync();
+        if (hideWithoutPriceSetting is { IsEnabled: true } && latestPrice == null)
+            return NotFound();
 
         var result = new ProductWithPriceAndCharacteristicsDto
         {

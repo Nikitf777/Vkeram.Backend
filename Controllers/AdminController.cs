@@ -34,9 +34,10 @@ public class AdminController : ControllerBase
     private readonly IUserRepository _userRepo;
     private readonly IBillStatusService _billStatusService;
     private readonly IProductHiddenRepository _productHiddenRepo;
+    private readonly IHideProductsWithoutPriceRepository _hideProductsWithoutPriceRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IProductHiddenRepository productHiddenRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IProductHiddenRepository productHiddenRepo, IHideProductsWithoutPriceRepository hideProductsWithoutPriceRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -62,6 +63,7 @@ public class AdminController : ControllerBase
         _userRepo = userRepo;
         _billStatusService = billStatusService;
         _productHiddenRepo = productHiddenRepo;
+        _hideProductsWithoutPriceRepo = hideProductsWithoutPriceRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -1809,6 +1811,66 @@ public class AdminController : ControllerBase
                 IsEnabled = settings.IsEnabled,
                 MaxAutoConfirmPrice = settings.MaxAutoConfirmPrice,
                 MaxAutoConfirmQuantity = settings.MaxAutoConfirmQuantity
+            }
+        });
+    }
+
+    [HttpGet("hide-products-without-price")]
+    public async Task<ActionResult<HideProductsWithoutPriceResponse>> GetHideProductsWithoutPrice(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var setting = await _hideProductsWithoutPriceRepo.GetAsync();
+        if (setting == null)
+        {
+            return NotFound(new HideProductsWithoutPriceResponse
+            {
+                Success = false,
+                Message = "Hide products without price setting not configured."
+            });
+        }
+
+        return Ok(new HideProductsWithoutPriceResponse
+        {
+            Success = true,
+            Message = "Hide products without price setting retrieved.",
+            HideProductsWithoutPrice = new HideProductsWithoutPriceInfo
+            {
+                Id = setting.Id,
+                IsEnabled = setting.IsEnabled
+            }
+        });
+    }
+
+    [HttpPatch("hide-products-without-price")]
+    public async Task<ActionResult<HideProductsWithoutPriceResponse>> UpdateHideProductsWithoutPrice(
+        [FromBody] UpdateHideProductsWithoutPriceRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var setting = await _hideProductsWithoutPriceRepo.GetAsync();
+        if (setting == null)
+        {
+            return NotFound(new HideProductsWithoutPriceResponse
+            {
+                Success = false,
+                Message = "Hide products without price setting not configured."
+            });
+        }
+
+        setting.IsEnabled = request.IsEnabled;
+        await _hideProductsWithoutPriceRepo.UpdateAsync(setting);
+
+        return Ok(new HideProductsWithoutPriceResponse
+        {
+            Success = true,
+            Message = "Hide products without price setting updated.",
+            HideProductsWithoutPrice = new HideProductsWithoutPriceInfo
+            {
+                Id = setting.Id,
+                IsEnabled = setting.IsEnabled
             }
         });
     }

@@ -39,6 +39,7 @@ builder.Services.AddScoped<IOrderLimitsRepository, OrderLimitsRepository>();
 builder.Services.AddScoped<IAutoConfirmOrdersRepository, AutoConfirmOrdersRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();
 builder.Services.AddScoped<IProductHiddenRepository, ProductHiddenRepository>();
+builder.Services.AddScoped<IHideProductsWithoutPriceRepository, HideProductsWithoutPriceRepository>();
 builder.Services.AddScoped<IImagePreviewService, ImagePreviewService>();
 builder.Services.AddHttpContextAccessor();
 

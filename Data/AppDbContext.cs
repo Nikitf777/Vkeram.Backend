@@ -30,6 +30,7 @@ public class AppDbContext : DbContext
     public DbSet<OrderLimits> OrderLimits => Set<OrderLimits>();
     public DbSet<AutoConfirmOrders> AutoConfirmOrders => Set<AutoConfirmOrders>();
     public DbSet<ProductHidden> ProductHidden => Set<ProductHidden>();
+    public DbSet<HideProductsWithoutPrice> HideProductsWithoutPrice => Set<HideProductsWithoutPrice>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -173,6 +174,11 @@ public class AppDbContext : DbContext
         modelBuilder.Entity<ProductHidden>(entity =>
         {
             entity.Property(e => e.ProductId).HasMaxLength(100);
+        });
+
+        modelBuilder.Entity<HideProductsWithoutPrice>(entity =>
+        {
+            entity.HasData(new HideProductsWithoutPrice { Id = 1, IsEnabled = false });
         });
 
         modelBuilder.Entity<ProductCharacteristic>(entity =>

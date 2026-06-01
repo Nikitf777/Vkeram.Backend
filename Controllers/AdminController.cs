@@ -35,9 +35,10 @@ public class AdminController : ControllerBase
     private readonly IBillStatusService _billStatusService;
     private readonly IProductHiddenRepository _productHiddenRepo;
     private readonly IHideProductsWithoutPriceRepository _hideProductsWithoutPriceRepo;
+    private readonly IBuyersService _buyersService;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IProductHiddenRepository productHiddenRepo, IHideProductsWithoutPriceRepository hideProductsWithoutPriceRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IProductHiddenRepository productHiddenRepo, IHideProductsWithoutPriceRepository hideProductsWithoutPriceRepo, IBuyersService buyersService, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -64,6 +65,7 @@ public class AdminController : ControllerBase
         _billStatusService = billStatusService;
         _productHiddenRepo = productHiddenRepo;
         _hideProductsWithoutPriceRepo = hideProductsWithoutPriceRepo;
+        _buyersService = buyersService;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -249,10 +251,14 @@ public class AdminController : ControllerBase
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
         var orders = await _orderRepo.GetAllAsync();
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+
         var result = orders.Select(o => new
         {
             o.Id,
             UserBuyerId = o.User.BuyerId,
+            UserBuyerName = buyerMap.GetValueOrDefault(o.User.BuyerId, o.User.BuyerId),
             UserEmail = o.User.ContactEmail,
             o.IsConfirmed,
             o.PaymentStatus,

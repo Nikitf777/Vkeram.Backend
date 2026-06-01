@@ -59,6 +59,12 @@ builder.Services.AddHttpClient<IBillsService, BillsService>(client =>
     client.DefaultRequestHeaders.Add("Authorization", builder.Configuration["OneC:AuthHeader"]);
 });
 
+builder.Services.AddHttpClient<IBillStatusService, BillStatusService>(client =>
+{
+    client.BaseAddress = new Uri(builder.Configuration["OneC:BaseUrl"]!);
+    client.DefaultRequestHeaders.Add("Authorization", builder.Configuration["OneC:AuthHeader"]);
+});
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseSqlite(builder.Configuration.GetConnectionString("DefaultConnection")));
 

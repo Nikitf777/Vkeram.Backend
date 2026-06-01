@@ -32,9 +32,10 @@ public class AdminController : ControllerBase
     private readonly IImagePreviewService _imagePreviewService;
     private readonly IProductService _productService;
     private readonly IUserRepository _userRepo;
+    private readonly IBillStatusService _billStatusService;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -58,6 +59,7 @@ public class AdminController : ControllerBase
         _imagePreviewService = imagePreviewService;
         _productService = productService;
         _userRepo = userRepo;
+        _billStatusService = billStatusService;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -282,14 +284,16 @@ public class AdminController : ControllerBase
             ? await _productService.GetByIdsAsync(allProductIds)
             : new Dictionary<string, ProductDto>();
 
+        var (paymentStatus, shipmentStatus) = await GetBillStatusOrDefault(order);
+
         return Ok(new OrderResponse
         {
             Success = true,
             Message = "Order retrieved.",
             OrderId = order.Id,
             IsConfirmed = order.IsConfirmed,
-            PaymentStatus = order.PaymentStatus,
-            ShipmentStatus = order.ShipmentStatus,
+            PaymentStatus = paymentStatus,
+            ShipmentStatus = shipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r => new ReservationInfo
@@ -332,6 +336,47 @@ public class AdminController : ControllerBase
         Unauthorized(new { Success = false, Message = "Invalid admin key." });
 
     private static readonly string[] ValidPaymentStatuses = ["Paid", "PartiallyPaid", "Unpaid"];
+
+    private static string NormalizeStatusForApi(string status) =>
+        string.IsNullOrEmpty(status) ? status : char.ToLower(status[0]) + status[1..];
+
+    private static string NormalizeStatusFromApi(string status) =>
+        string.IsNullOrEmpty(status) ? status : char.ToUpper(status[0]) + status[1..];
+
+    private async Task<(string paymentStatus, string shipmentStatus)> GetBillStatusOrDefault(Order order)
+    {
+        if (order.BillId == null)
+            return (Models.PaymentStatus.Unpaid.ToString(), ComputeShipmentStatus(order.Reservations, order.Deliveries));
+
+        try
+        {
+            var billStatus = await _billStatusService.GetBillStatusAsync(order.BillId);
+            if (billStatus != null)
+                return (NormalizeStatusFromApi(billStatus.PaymentStatus), NormalizeStatusFromApi(billStatus.ShipmentStatus));
+        }
+        catch
+        {
+        }
+
+        return (Models.PaymentStatus.Unpaid.ToString(), ComputeShipmentStatus(order.Reservations, order.Deliveries));
+    }
+
+    private static string ComputeShipmentStatus(ICollection<OrderReservation> reservations, ICollection<OrderDelivery> deliveries)
+    {
+        if (reservations.Count == 0 && deliveries.Count == 0)
+            return Models.ShipmentStatus.Unshipped.ToString();
+
+        var allPicked = reservations.Count == 0 || reservations.All(r => r.Picked);
+        var allDelivered = deliveries.Count == 0 || deliveries.All(d => d.Delivered);
+
+        if (allPicked && allDelivered)
+            return Models.ShipmentStatus.Shipped.ToString();
+
+        if (reservations.Any(r => r.Picked) || deliveries.Any(d => d.Delivered))
+            return Models.ShipmentStatus.PartiallyShipped.ToString();
+
+        return Models.ShipmentStatus.Unshipped.ToString();
+    }
 
     [HttpPost("orders/{orderId}/confirm")]
     public async Task<ActionResult<AdminOrderResponse>> ConfirmOrder(
@@ -402,14 +447,24 @@ public class AdminController : ControllerBase
         order.BillId = billId;
         await _orderRepo.UpdateAsync(order);
 
+        var computedShipment = ComputeShipmentStatus(order.Reservations, order.Deliveries);
+        await _billStatusService.UpdateBillStatusAsync(new UpdateBillStatusRequest
+        {
+            BillId = billId,
+            PaymentStatus = NormalizeStatusForApi(Models.PaymentStatus.Unpaid.ToString()),
+            ShipmentStatus = NormalizeStatusForApi(computedShipment)
+        });
+
+        var (paymentStatus, shipmentStatus) = await GetBillStatusOrDefault(order);
+
         return Ok(new AdminOrderResponse
         {
             Success = true,
             Message = "Order confirmed.",
             OrderId = order.Id,
             IsConfirmed = order.IsConfirmed,
-            PaymentStatus = order.PaymentStatus,
-            ShipmentStatus = order.ShipmentStatus,
+            PaymentStatus = paymentStatus,
+            ShipmentStatus = shipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt
         });
@@ -442,8 +497,18 @@ public class AdminController : ControllerBase
             });
         }
 
-        order.PaymentStatus = request.Status;
-        await _orderRepo.UpdateAsync(order);
+        if (order.BillId != null)
+        {
+            var (_, currentShipmentStatus) = await GetBillStatusOrDefault(order);
+            await _billStatusService.UpdateBillStatusAsync(new UpdateBillStatusRequest
+            {
+                BillId = order.BillId,
+                PaymentStatus = NormalizeStatusForApi(request.Status),
+                ShipmentStatus = NormalizeStatusForApi(currentShipmentStatus)
+            });
+        }
+
+        var (paymentStatus, shipmentStatus) = await GetBillStatusOrDefault(order);
 
         return Ok(new AdminOrderResponse
         {
@@ -451,8 +516,8 @@ public class AdminController : ControllerBase
             Message = "Payment status updated.",
             OrderId = order.Id,
             IsConfirmed = order.IsConfirmed,
-            PaymentStatus = order.PaymentStatus,
-            ShipmentStatus = order.ShipmentStatus,
+            PaymentStatus = paymentStatus,
+            ShipmentStatus = shipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt
         });
@@ -473,6 +538,8 @@ public class AdminController : ControllerBase
         reservation.Picked = request.Status;
         await _orderRepo.UpdateReservationAsync(reservation);
 
+        await SyncShipmentStatusToExternalApi(reservation.OrderId);
+
         return Ok(new { Success = true, Message = $"Reservation status updated." });
     }
 
@@ -491,7 +558,25 @@ public class AdminController : ControllerBase
         delivery.Delivered = request.Status;
         await _orderRepo.UpdateDeliveryAsync(delivery);
 
+        await SyncShipmentStatusToExternalApi(delivery.OrderId);
+
         return Ok(new { Success = true, Message = $"Delivery status updated." });
+    }
+
+    private async Task SyncShipmentStatusToExternalApi(int orderId)
+    {
+        var order = await _orderRepo.GetByIdAsync(orderId);
+        if (order == null || order.BillId == null) return;
+
+        var computed = ComputeShipmentStatus(order.Reservations, order.Deliveries);
+        var (paymentStatus, _) = await GetBillStatusOrDefault(order);
+
+        await _billStatusService.UpdateBillStatusAsync(new UpdateBillStatusRequest
+        {
+            BillId = order.BillId,
+            PaymentStatus = NormalizeStatusForApi(paymentStatus),
+            ShipmentStatus = NormalizeStatusForApi(computed)
+        });
     }
 
     [HttpGet("workdays")]

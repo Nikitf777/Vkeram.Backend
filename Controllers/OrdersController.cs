@@ -28,8 +28,9 @@ public class OrdersController : ControllerBase
     private readonly IAutoConfirmOrdersRepository _autoConfirmOrdersRepo;
     private readonly IBillsService _billsService;
     private readonly IUserRepository _userRepo;
+    private readonly IBillStatusService _billStatusService;
 
-    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IUserRepository userRepo)
+    public OrdersController(IOrderRepository orderRepo, IProductService productService, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IProductPriceRepository productPriceRepo, IReservationDurationRepository reservationDurationRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IUserRepository userRepo, IBillStatusService billStatusService)
     {
         _orderRepo = orderRepo;
         _productService = productService;
@@ -46,6 +47,7 @@ public class OrdersController : ControllerBase
         _autoConfirmOrdersRepo = autoConfirmOrdersRepo;
         _billsService = billsService;
         _userRepo = userRepo;
+        _billStatusService = billStatusService;
     }
 
     [HttpGet]
@@ -64,6 +66,9 @@ public class OrdersController : ControllerBase
         var productMap = allProductIds.Count > 0
             ? await _productService.GetByIdsAsync(allProductIds)
             : new Dictionary<string, ProductDto>();
+
+        var statusTasks = orders.ToDictionary(o => o.Id, o => GetBillStatusOrDefault(o));
+        await Task.WhenAll(statusTasks.Values);
 
         var result = orders.Select(o =>
         {
@@ -96,14 +101,16 @@ public class OrdersController : ControllerBase
                 }).ToList()
             }).ToList();
 
+            var (paymentStatus, shipmentStatus) = statusTasks[o.Id].Result;
+
             return new OrderResponse
             {
                 Success = true,
                 Message = "Order retrieved.",
                 OrderId = o.Id,
                 IsConfirmed = o.IsConfirmed,
-                PaymentStatus = o.PaymentStatus,
-                ShipmentStatus = o.ShipmentStatus,
+                PaymentStatus = paymentStatus,
+                ShipmentStatus = shipmentStatus,
                 UserId = o.UserId,
                 CreatedAt = o.CreatedAt,
                 Reservations = reservations,
@@ -163,14 +170,16 @@ public class OrdersController : ControllerBase
             }).ToList()
         }).ToList();
 
+        var (paymentStatus, shipmentStatus) = await GetBillStatusOrDefault(o);
+
         return Ok(new OrderResponse
         {
             Success = true,
             Message = "Order retrieved.",
             OrderId = o.Id,
             IsConfirmed = o.IsConfirmed,
-            PaymentStatus = o.PaymentStatus,
-            ShipmentStatus = o.ShipmentStatus,
+            PaymentStatus = paymentStatus,
+            ShipmentStatus = shipmentStatus,
             UserId = o.UserId,
             CreatedAt = o.CreatedAt,
             Reservations = reservations,
@@ -593,14 +602,19 @@ public class OrdersController : ControllerBase
 
         await _orderRepo.CreateAsync(order);
 
+        var createdPaymentStatus = order.BillId != null
+            ? await GetPaymentStatusFromExternalApi(order)
+            : Models.PaymentStatus.Unpaid.ToString();
+        var createdShipmentStatus = ComputeShipmentStatus(order.Reservations, order.Deliveries);
+
         return Ok(new OrderResponse
         {
             Success = true,
             Message = "Order created successfully.",
             OrderId = order.Id,
             IsConfirmed = order.IsConfirmed,
-            PaymentStatus = order.PaymentStatus,
-            ShipmentStatus = order.ShipmentStatus,
+            PaymentStatus = createdPaymentStatus,
+            ShipmentStatus = createdShipmentStatus,
             UserId = order.UserId,
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r =>
@@ -794,5 +808,49 @@ public class OrdersController : ControllerBase
                 current = current.AddDays(1);
         }
         return current;
+    }
+
+    private static string NormalizeStatusFromApi(string status) =>
+        string.IsNullOrEmpty(status) ? status : char.ToUpper(status[0]) + status[1..];
+
+    private async Task<(string paymentStatus, string shipmentStatus)> GetBillStatusOrDefault(Order order)
+    {
+        if (order.BillId == null)
+            return (Models.PaymentStatus.Unpaid.ToString(), ComputeShipmentStatus(order.Reservations, order.Deliveries));
+
+        try
+        {
+            var billStatus = await _billStatusService.GetBillStatusAsync(order.BillId);
+            if (billStatus != null)
+                return (NormalizeStatusFromApi(billStatus.PaymentStatus), NormalizeStatusFromApi(billStatus.ShipmentStatus));
+        }
+        catch
+        {
+        }
+
+        return (Models.PaymentStatus.Unpaid.ToString(), ComputeShipmentStatus(order.Reservations, order.Deliveries));
+    }
+
+    private async Task<string> GetPaymentStatusFromExternalApi(Order order)
+    {
+        var (paymentStatus, _) = await GetBillStatusOrDefault(order);
+        return paymentStatus;
+    }
+
+    private static string ComputeShipmentStatus(ICollection<OrderReservation> reservations, ICollection<OrderDelivery> deliveries)
+    {
+        if (reservations.Count == 0 && deliveries.Count == 0)
+            return Models.ShipmentStatus.Unshipped.ToString();
+
+        var allPicked = reservations.Count == 0 || reservations.All(r => r.Picked);
+        var allDelivered = deliveries.Count == 0 || deliveries.All(d => d.Delivered);
+
+        if (allPicked && allDelivered)
+            return Models.ShipmentStatus.Shipped.ToString();
+
+        if (reservations.Any(r => r.Picked) || deliveries.Any(d => d.Delivered))
+            return Models.ShipmentStatus.PartiallyShipped.ToString();
+
+        return Models.ShipmentStatus.Unshipped.ToString();
     }
 }

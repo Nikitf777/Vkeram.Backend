@@ -9,8 +9,8 @@ public class InviteCode
     [Required, MaxLength(64)]
     public string Code { get; set; } = string.Empty;
 
-    [MaxLength(200)]
-    public string? BuyerId { get; set; }
+    [Required, MaxLength(200)]
+    public string BuyerId { get; set; } = string.Empty;
 
     public bool IsUsed { get; set; } = false;
 

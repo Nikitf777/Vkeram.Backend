@@ -99,6 +99,21 @@ public class OrderRepository : IOrderRepository
             .ToListAsync();
     }
 
+    public async Task<List<Order>> GetByUserIdsAsync(List<int> userIds)
+    {
+        return await _db.Orders
+            .Include(o => o.User)
+            .Include(o => o.Reservations)
+                .ThenInclude(r => r.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
+            .Include(o => o.Deliveries)
+                .ThenInclude(d => d.ProductReservations)
+                .ThenInclude(pr => pr.ProductPrice)
+            .Where(o => userIds.Contains(o.UserId))
+            .OrderByDescending(o => o.CreatedAt)
+            .ToListAsync();
+    }
+
     public async Task<OrderReservation?> GetReservationByIdAsync(int id)
     {
         return await _db.OrderReservations.FindAsync(id);

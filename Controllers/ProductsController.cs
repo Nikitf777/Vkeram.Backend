@@ -79,7 +79,8 @@ public class ProductsController : ControllerBase
             {
                 Id = p.Id,
                 Name = p.Name,
-                Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price : null,
+                Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price * (1 + p.Vat / 100m) : null,
+                Vat = p.Vat,
                 PreviewUrl = previewUrlMap?.GetValueOrDefault(p.Id)
             };
             if (charMap != null && charMap.TryGetValue(p.Id, out var c))
@@ -111,7 +112,8 @@ public class ProductsController : ControllerBase
         {
             Id = product.Id,
             Name = product.Name,
-            Price = latestPrice?.Price
+            Price = latestPrice?.Price * (1 + product.Vat / 100m),
+            Vat = product.Vat
         };
 
         if (includeCharacteristics)

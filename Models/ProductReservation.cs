@@ -24,4 +24,6 @@ public class ProductReservation
 
     [ForeignKey(nameof(ProductPriceId))]
     public ProductPrice ProductPrice { get; set; } = null!;
+
+    public decimal Vat { get; set; }
 }

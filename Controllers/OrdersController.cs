@@ -82,8 +82,9 @@ public class OrdersController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                     Quantity = pr.Quantity,
-                    Price = pr.ProductPrice?.Price ?? 0,
-                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList()
             }).ToList();
 
@@ -96,8 +97,9 @@ public class OrdersController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                     Quantity = pr.Quantity,
-                    Price = pr.ProductPrice?.Price ?? 0,
-                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList()
             }).ToList();
 
@@ -151,8 +153,9 @@ public class OrdersController : ControllerBase
                 ProductId = pr.ProductId,
                 ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                 Quantity = pr.Quantity,
-                Price = pr.ProductPrice?.Price ?? 0,
-                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                Vat = pr.Vat,
+                Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
             }).ToList()
         }).ToList();
 
@@ -165,8 +168,9 @@ public class OrdersController : ControllerBase
                 ProductId = pr.ProductId,
                 ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                 Quantity = pr.Quantity,
-                Price = pr.ProductPrice?.Price ?? 0,
-                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                Vat = pr.Vat,
+                Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
             }).ToList()
         }).ToList();
 
@@ -481,7 +485,8 @@ public class OrdersController : ControllerBase
                 {
                     ProductId = productReq.ProductId,
                     Quantity = productReq.Quantity,
-                    ProductPriceId = priceMap[productReq.ProductId].Id
+                    ProductPriceId = priceMap[productReq.ProductId].Id,
+                    Vat = existingProducts[productReq.ProductId].Vat
                 });
             }
 
@@ -548,7 +553,8 @@ public class OrdersController : ControllerBase
                 {
                     ProductId = productReq.ProductId,
                     Quantity = productReq.Quantity,
-                    ProductPriceId = priceMap[productReq.ProductId].Id
+                    ProductPriceId = priceMap[productReq.ProductId].Id,
+                    Vat = existingProducts[productReq.ProductId].Vat
                 });
             }
 
@@ -621,8 +627,9 @@ public class OrdersController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = existingProducts[pr.ProductId].Name,
                     Quantity = pr.Quantity,
-                    Price = priceMap[pr.ProductId].Price,
-                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = priceMap[pr.ProductId].Price * (1 + pr.Vat / 100m),
+                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList();
                 return new ReservationInfo
                 {
@@ -639,8 +646,9 @@ public class OrdersController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = existingProducts[pr.ProductId].Name,
                     Quantity = pr.Quantity,
-                    Price = priceMap[pr.ProductId].Price,
-                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = priceMap[pr.ProductId].Price * (1 + pr.Vat / 100m),
+                    TotalPrice = priceMap[pr.ProductId].Price * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList();
                 return new DeliveryInfo
                 {
@@ -649,8 +657,8 @@ public class OrdersController : ControllerBase
                     Products = products
                 };
             }).ToList(),
-            TotalPrice = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity))
-                       + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity)),
+            TotalPrice = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity * (1 + pr.Vat / 100m)))
+                       + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => priceMap[pr.ProductId].Price * pr.Quantity * (1 + pr.Vat / 100m))),
             TotalQuantity = order.Reservations.Sum(r => r.ProductReservations.Sum(pr => pr.Quantity))
                           + order.Deliveries.Sum(d => d.ProductReservations.Sum(pr => pr.Quantity))
         });

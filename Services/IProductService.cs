@@ -4,6 +4,7 @@ public class ProductDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public decimal Vat { get; set; }
 }
 
 public interface IProductService

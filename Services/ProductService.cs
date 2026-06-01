@@ -6,6 +6,7 @@ internal class RawProductDto
 {
     public string Id { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
+    public string? Vat { get; set; }
 }
 
 public class ProductService : IProductService
@@ -56,7 +57,7 @@ public class ProductService : IProductService
         if (rawProducts == null)
             return new List<ProductDto>();
 
-        return rawProducts.Select(r => new ProductDto { Id = r.Id, Name = r.Name }).ToList();
+        return rawProducts.Select(r => MapToDto(r)).ToList();
     }
 
     public async Task<ProductDto?> GetByIdAsync(string id)
@@ -69,6 +70,23 @@ public class ProductService : IProductService
         if (rawProduct == null)
             return null;
 
-        return new ProductDto { Id = rawProduct.Id, Name = rawProduct.Name };
+        return MapToDto(rawProduct);
+    }
+
+    private static ProductDto MapToDto(RawProductDto raw)
+    {
+        var vat = 0m;
+        if (!string.IsNullOrWhiteSpace(raw.Vat))
+        {
+            var cleaned = raw.Vat.TrimEnd('%', ' ');
+            decimal.TryParse(cleaned, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out vat);
+        }
+
+        return new ProductDto
+        {
+            Id = raw.Id,
+            Name = raw.Name,
+            Vat = vat
+        };
     }
 }

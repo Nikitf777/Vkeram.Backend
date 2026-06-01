@@ -322,8 +322,9 @@ public class AdminController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                     Quantity = pr.Quantity,
-                    Price = pr.ProductPrice?.Price ?? 0,
-                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList()
             }).ToList(),
             Deliveries = order.Deliveries.Select(d => new DeliveryInfo
@@ -336,8 +337,9 @@ public class AdminController : ControllerBase
                     ProductId = pr.ProductId,
                     ProductName = productMap.TryGetValue(pr.ProductId, out var p) ? p.Name : pr.ProductId,
                     Quantity = pr.Quantity,
-                    Price = pr.ProductPrice?.Price ?? 0,
-                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity
+                    Vat = pr.Vat,
+                    Price = (pr.ProductPrice?.Price ?? 0) * (1 + pr.Vat / 100m),
+                    TotalPrice = (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)
                 }).ToList()
             }).ToList(),
             TotalPrice = order.TotalPrice,
@@ -611,6 +613,7 @@ public class AdminController : ControllerBase
             Id = p.Id,
             Name = p.Name,
             Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price : null,
+            Vat = p.Vat,
             IsHidden = hiddenMap.TryGetValue(p.Id, out var hidden) && hidden
         }).ToList();
 

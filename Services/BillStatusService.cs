@@ -5,10 +5,12 @@ namespace Vkeram.Backend.Services;
 public class BillStatusService : IBillStatusService
 {
     private readonly HttpClient _httpClient;
+    private readonly string _billsPath;
 
-    public BillStatusService(HttpClient httpClient)
+    public BillStatusService(HttpClient httpClient, IConfiguration config)
     {
         _httpClient = httpClient;
+        _billsPath = config["OneC:BillsPath"] ?? "/demo/hs/bills/create";
     }
 
     public async Task<BillStatusResponse?> GetBillStatusAsync(string billId)

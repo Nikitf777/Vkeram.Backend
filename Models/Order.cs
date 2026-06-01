@@ -31,8 +31,8 @@ public class Order
 
     [NotMapped]
     public decimal TotalPrice =>
-        Reservations.Sum(r => r.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity))
-        + Deliveries.Sum(d => d.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity));
+        Reservations.Sum(r => r.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)))
+        + Deliveries.Sum(d => d.ProductReservations.Sum(pr => (pr.ProductPrice?.Price ?? 0) * pr.Quantity * (1 + pr.Vat / 100m)));
 
     [NotMapped]
     public int TotalQuantity =>

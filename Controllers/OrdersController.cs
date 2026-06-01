@@ -69,6 +69,7 @@ public class OrdersController : ControllerBase
         {
             var reservations = o.Reservations.Select(r => new ReservationInfo
             {
+                Id = r.Id,
                 StartTime = r.Day.ToDateTime(r.StartTime),
                 EndTime = r.Day.ToDateTime(r.EndTime),
                 Products = r.ProductReservations.Select(pr => new ProductReservationInfo
@@ -83,6 +84,7 @@ public class OrdersController : ControllerBase
 
             var deliveries = o.Deliveries.Select(d => new DeliveryInfo
             {
+                Id = d.Id,
                 DeliveryTime = d.DeliveryTime,
                 Products = d.ProductReservations.Select(pr => new ProductReservationInfo
                 {
@@ -134,6 +136,7 @@ public class OrdersController : ControllerBase
 
         var reservations = o.Reservations.Select(r => new ReservationInfo
         {
+            Id = r.Id,
             StartTime = r.Day.ToDateTime(r.StartTime),
             EndTime = r.Day.ToDateTime(r.EndTime),
             Products = r.ProductReservations.Select(pr => new ProductReservationInfo
@@ -148,6 +151,7 @@ public class OrdersController : ControllerBase
 
         var deliveries = o.Deliveries.Select(d => new DeliveryInfo
         {
+            Id = d.Id,
             DeliveryTime = d.DeliveryTime,
             Products = d.ProductReservations.Select(pr => new ProductReservationInfo
             {
@@ -611,6 +615,7 @@ public class OrdersController : ControllerBase
                 }).ToList();
                 return new ReservationInfo
                 {
+                    Id = r.Id,
                     StartTime = r.Day.ToDateTime(r.StartTime),
                     EndTime = r.Day.ToDateTime(r.EndTime),
                     Products = products
@@ -628,6 +633,7 @@ public class OrdersController : ControllerBase
                 }).ToList();
                 return new DeliveryInfo
                 {
+                    Id = d.Id,
                     DeliveryTime = d.DeliveryTime,
                     Products = products
                 };

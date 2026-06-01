@@ -30,8 +30,10 @@ public class AdminOrderResponse
 
 public class ReservationInfo
 {
+    public int Id { get; set; }
     public DateTime StartTime { get; set; }
     public DateTime EndTime { get; set; }
+    public bool Picked { get; set; }
     public List<ProductReservationInfo>? Products { get; set; }
 }
 
@@ -46,7 +48,9 @@ public class ProductReservationInfo
 
 public class DeliveryInfo
 {
+    public int Id { get; set; }
     public DateTime DeliveryTime { get; set; }
+    public bool Delivered { get; set; }
     public List<ProductReservationInfo>? Products { get; set; }
 }
 

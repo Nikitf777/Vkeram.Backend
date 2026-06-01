@@ -294,8 +294,10 @@ public class AdminController : ControllerBase
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r => new ReservationInfo
             {
+                Id = r.Id,
                 StartTime = r.Day.ToDateTime(r.StartTime),
                 EndTime = r.Day.ToDateTime(r.EndTime),
+                Picked = r.Picked,
                 Products = r.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
@@ -307,7 +309,9 @@ public class AdminController : ControllerBase
             }).ToList(),
             Deliveries = order.Deliveries.Select(d => new DeliveryInfo
             {
+                Id = d.Id,
                 DeliveryTime = d.DeliveryTime,
+                Delivered = d.Delivered,
                 Products = d.ProductReservations.Select(pr => new ProductReservationInfo
                 {
                     ProductId = pr.ProductId,
@@ -454,48 +458,40 @@ public class AdminController : ControllerBase
         });
     }
 
-    [HttpPatch("orders/{orderId}/reservations/{reservationId}/pick")]
-    public async Task<ActionResult> PickReservation(
-        int orderId,
+    [HttpPatch("reservations/{reservationId}/status")]
+    public async Task<ActionResult> UpdateReservationStatus(
         int reservationId,
+        [FromBody] UpdateStatusRequest request,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
-
-        var order = await _orderRepo.GetByIdAsync(orderId);
-        if (order == null)
-            return NotFound(new { Success = false, Message = "Order not found." });
 
         var reservation = await _orderRepo.GetReservationByIdAsync(reservationId);
-        if (reservation == null || reservation.OrderId != orderId)
+        if (reservation == null)
             return NotFound(new { Success = false, Message = "Reservation not found." });
 
-        reservation.Picked = true;
+        reservation.Picked = request.Status;
         await _orderRepo.UpdateReservationAsync(reservation);
 
-        return Ok(new { Success = true, Message = "Reservation marked as picked." });
+        return Ok(new { Success = true, Message = $"Reservation status updated." });
     }
 
-    [HttpPatch("orders/{orderId}/deliveries/{deliveryId}/deliver")]
-    public async Task<ActionResult> DeliverDelivery(
-        int orderId,
+    [HttpPatch("deliveries/{deliveryId}/status")]
+    public async Task<ActionResult> UpdateDeliveryStatus(
         int deliveryId,
+        [FromBody] UpdateStatusRequest request,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
-        var order = await _orderRepo.GetByIdAsync(orderId);
-        if (order == null)
-            return NotFound(new { Success = false, Message = "Order not found." });
-
         var delivery = await _orderRepo.GetDeliveryByIdAsync(deliveryId);
-        if (delivery == null || delivery.OrderId != orderId)
+        if (delivery == null)
             return NotFound(new { Success = false, Message = "Delivery not found." });
 
-        delivery.Delivered = true;
+        delivery.Delivered = request.Status;
         await _orderRepo.UpdateDeliveryAsync(delivery);
 
-        return Ok(new { Success = true, Message = "Delivery marked as delivered." });
+        return Ok(new { Success = true, Message = $"Delivery status updated." });
     }
 
     [HttpGet("workdays")]

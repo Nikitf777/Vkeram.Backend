@@ -1875,6 +1875,60 @@ public class AdminController : ControllerBase
         });
     }
 
+    [HttpGet("reservations")]
+    public async Task<ActionResult> GetReservations(
+        [FromQuery] DateOnly? minDate,
+        [FromQuery] DateOnly? maxDate,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var reservations = await _orderRepo.GetReservationsAsync(minDate, maxDate);
+        var result = reservations.Select(r => new AdminReservationItem
+        {
+            Id = r.Id,
+            Day = r.Day,
+            StartTime = r.StartTime,
+            EndTime = r.EndTime,
+            Picked = r.Picked,
+            OrderId = r.OrderId,
+            IsConfirmed = r.Order.IsConfirmed
+        }).ToList();
+
+        return Ok(new AdminReservationsResponse
+        {
+            Success = true,
+            Message = "Reservations retrieved.",
+            Reservations = result
+        });
+    }
+
+    [HttpGet("deliveries")]
+    public async Task<ActionResult> GetDeliveries(
+        [FromQuery] DateTime? minDate,
+        [FromQuery] DateTime? maxDate,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var deliveries = await _orderRepo.GetDeliveriesAsync(minDate, maxDate);
+        var result = deliveries.Select(d => new AdminDeliveryItem
+        {
+            Id = d.Id,
+            DeliveryTime = d.DeliveryTime,
+            Delivered = d.Delivered,
+            OrderId = d.OrderId,
+            IsConfirmed = d.Order.IsConfirmed
+        }).ToList();
+
+        return Ok(new AdminDeliveriesResponse
+        {
+            Success = true,
+            Message = "Deliveries retrieved.",
+            Deliveries = result
+        });
+    }
+
     private static ProductCharacteristicDto MapCharacteristicToDto(ProductCharacteristic c) => new()
     {
         Id = c.Id,

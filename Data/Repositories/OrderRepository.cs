@@ -119,4 +119,39 @@ public class OrderRepository : IOrderRepository
         _db.OrderDeliveries.Update(delivery);
         await _db.SaveChangesAsync();
     }
+
+    public async Task<List<OrderReservation>> GetReservationsAsync(DateOnly? minDate = null, DateOnly? maxDate = null)
+    {
+        var query = _db.OrderReservations
+            .Include(r => r.Order)
+            .AsQueryable();
+
+        if (minDate.HasValue)
+            query = query.Where(r => r.Day >= minDate.Value);
+
+        if (maxDate.HasValue)
+            query = query.Where(r => r.Day <= maxDate.Value);
+
+        return await query
+            .OrderBy(r => r.Day)
+            .ThenBy(r => r.StartTime)
+            .ToListAsync();
+    }
+
+    public async Task<List<OrderDelivery>> GetDeliveriesAsync(DateTime? minDate = null, DateTime? maxDate = null)
+    {
+        var query = _db.OrderDeliveries
+            .Include(d => d.Order)
+            .AsQueryable();
+
+        if (minDate.HasValue)
+            query = query.Where(d => d.DeliveryTime >= minDate.Value);
+
+        if (maxDate.HasValue)
+            query = query.Where(d => d.DeliveryTime <= maxDate.Value);
+
+        return await query
+            .OrderBy(d => d.DeliveryTime)
+            .ToListAsync();
+    }
 }

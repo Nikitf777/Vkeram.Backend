@@ -57,10 +57,34 @@ public class BuyersController : ControllerBase
         if (adminKey != _adminKey)
             return Unauthorized(new { Success = false, Message = "Invalid admin key." });
 
-        var buyer = await _buyersService.GetByIdAsync(id);
+        var buyers = await _buyersService.GetAllAsync();
+        var buyer = buyers.FirstOrDefault(b => b.Id == id);
         if (buyer == null)
             return NotFound(new { Success = false, Message = "Buyer not found." });
 
-        return Ok(new { Success = true, Buyer = buyer });
+        var users = await _userRepo.GetAllAsync();
+        var buyerUsers = users
+            .Where(u => u.BuyerId == id)
+            .Select(u => new
+            {
+                u.Id,
+                u.ContactName,
+                u.ContactEmail,
+                u.Phone,
+                u.CreatedAt,
+                u.IsActive
+            })
+            .ToList();
+
+        return Ok(new
+        {
+            Success = true,
+            Buyer = new
+            {
+                Id = id,
+                buyer.Name,
+                Users = buyerUsers
+            }
+        });
     }
 }

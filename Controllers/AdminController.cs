@@ -175,10 +175,14 @@ public class AdminController : ControllerBase
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
         var users = await _userRepo.GetAllAsync();
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+
         var result = users.Select(u => new
         {
             u.Id,
             u.BuyerId,
+            BuyerName = buyerMap.GetValueOrDefault(u.BuyerId, ""),
             u.ContactEmail,
             u.ContactName,
             u.Phone,
@@ -200,6 +204,9 @@ public class AdminController : ControllerBase
         if (user == null)
             return NotFound(new { Success = false, Message = "User not found." });
 
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+
         return Ok(new
         {
             Success = true,
@@ -207,6 +214,7 @@ public class AdminController : ControllerBase
             {
                 user.Id,
                 user.BuyerId,
+                BuyerName = buyerMap.GetValueOrDefault(user.BuyerId, ""),
                 user.ContactEmail,
                 user.ContactName,
                 user.Phone,

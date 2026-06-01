@@ -13,7 +13,7 @@ public class BuyersService : IBuyersService
     {
         _httpClient = httpClient;
         _buyersPath = config["OneC:BuyersPath"] ?? "/demo/hs/buyers/all";
-        _buyerDetailPath = config["OneC:BuyerDetailPath"] ?? "/demo/hs/buyers/";
+        _buyerDetailPath = config["OneC:BuyerDetailPath"] ?? "/demo/hs/buyers";
     }
 
     public async Task<List<BuyerDto>> GetAllAsync()
@@ -27,7 +27,8 @@ public class BuyersService : IBuyersService
 
     public async Task<JsonElement?> GetByIdAsync(string id)
     {
-        var response = await _httpClient.GetAsync(_buyerDetailPath + Uri.EscapeDataString(id));
+        Console.WriteLine(_buyerDetailPath + Uri.EscapeDataString(id));
+        var response = await _httpClient.GetAsync($"{_buyerDetailPath}/{Uri.EscapeDataString(id)}");
         response.EnsureSuccessStatusCode();
 
         var content = await response.Content.ReadAsStringAsync();

@@ -9,6 +9,8 @@ public class OrderResponse
     public string? PaymentStatus { get; set; }
     public string? ShipmentStatus { get; set; }
     public int? UserId { get; set; }
+    public string? UserBuyerId { get; set; }
+    public string? UserBuyerName { get; set; }
     public DateTime? CreatedAt { get; set; }
     public List<ReservationInfo>? Reservations { get; set; }
     public List<DeliveryInfo>? Deliveries { get; set; }

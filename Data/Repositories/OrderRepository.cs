@@ -29,6 +29,7 @@ public class OrderRepository : IOrderRepository
     public async Task<Order?> GetByIdAsync(int id)
     {
         return await _db.Orders
+            .Include(o => o.User)
             .Include(o => o.Reservations)
                 .ThenInclude(r => r.ProductReservations)
                 .ThenInclude(pr => pr.ProductPrice)

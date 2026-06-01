@@ -296,6 +296,9 @@ public class AdminController : ControllerBase
 
         var (paymentStatus, shipmentStatus) = await GetBillStatusOrDefault(order);
 
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+
         return Ok(new OrderResponse
         {
             Success = true,
@@ -305,6 +308,8 @@ public class AdminController : ControllerBase
             PaymentStatus = paymentStatus,
             ShipmentStatus = shipmentStatus,
             UserId = order.UserId,
+            UserBuyerId = order.User.BuyerId,
+            UserBuyerName = buyerMap.GetValueOrDefault(order.User.BuyerId, order.User.BuyerId),
             CreatedAt = order.CreatedAt,
             Reservations = order.Reservations.Select(r => new ReservationInfo
             {

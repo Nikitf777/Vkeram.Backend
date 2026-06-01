@@ -33,9 +33,10 @@ public class AdminController : ControllerBase
     private readonly IProductService _productService;
     private readonly IUserRepository _userRepo;
     private readonly IBillStatusService _billStatusService;
+    private readonly IProductHiddenRepository _productHiddenRepo;
     private readonly string _adminKey;
 
-    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IConfiguration config)
+    public AdminController(IInviteCodeRepository inviteRepo, IOrderRepository orderRepo, IWorkDayRepository workDayRepo, IDefaultWorkingHoursRepository workingHoursRepo, IDefaultBreakRepository breakRepo, IMinimumBookingDaysRepository minBookingDaysRepo, IMaximumBookingDaysRepository maxBookingDaysRepo, IMinimumDeliveryDaysRepository minDeliveryDaysRepo, IMaximumDeliveryDaysRepository maxDeliveryDaysRepo, IAllowBookingRepository allowBookingRepo, IAllowDeliveryRepository allowDeliveryRepo, IReservationDurationRepository reservationDurationRepo, IOrderLimitsRepository orderLimitsRepo, IAutoConfirmOrdersRepository autoConfirmOrdersRepo, IBillsService billsService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductImagePreviewRepository productImagePreviewRepo, IImagePreviewService imagePreviewService, IProductService productService, IUserRepository userRepo, IBillStatusService billStatusService, IProductHiddenRepository productHiddenRepo, IConfiguration config)
     {
         _inviteRepo = inviteRepo;
         _orderRepo = orderRepo;
@@ -60,6 +61,7 @@ public class AdminController : ControllerBase
         _productService = productService;
         _userRepo = userRepo;
         _billStatusService = billStatusService;
+        _productHiddenRepo = productHiddenRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -577,6 +579,71 @@ public class AdminController : ControllerBase
             PaymentStatus = NormalizeStatusForApi(paymentStatus),
             ShipmentStatus = NormalizeStatusForApi(computed)
         });
+    }
+
+    [HttpGet("products")]
+    public async Task<ActionResult<List<AdminProductDto>>> GetAdminProducts(
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var products = await _productService.GetAllAsync();
+        var hiddenProducts = await _productHiddenRepo.GetAllAsync();
+        var hiddenMap = hiddenProducts.ToDictionary(h => h.ProductId, h => h.IsHidden);
+        var latestPrices = await _productPriceRepo.GetLatestPerProductAsync();
+        var priceMap = latestPrices.ToDictionary(p => p.ProductId);
+
+        var result = products.Select(p => new AdminProductDto
+        {
+            Id = p.Id,
+            Name = p.Name,
+            Price = priceMap.TryGetValue(p.Id, out var pp) ? pp.Price : null,
+            IsHidden = hiddenMap.TryGetValue(p.Id, out var hidden) && hidden
+        }).ToList();
+
+        return Ok(result);
+    }
+
+    [HttpGet("products/{productId}")]
+    public async Task<ActionResult> GetAdminProduct(
+        string productId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey,
+        [FromQuery] bool includeCharacteristics = false)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var product = await _productService.GetByIdAsync(productId);
+        if (product == null)
+            return NotFound(new { Success = false, Message = "Product not found." });
+
+        var hidden = await _productHiddenRepo.GetByProductIdAsync(productId);
+        var latestPrice = await _productPriceRepo.GetLatestForProductAsync(productId);
+
+        var charDto = includeCharacteristics
+            ? await _productCharacteristicRepo.GetByProductIdAsync(productId)
+            : null;
+
+        return Ok(new
+        {
+            id = product.Id,
+            name = product.Name,
+            price = latestPrice?.Price,
+            isHidden = hidden?.IsHidden ?? false,
+            characteristics = charDto
+        });
+    }
+
+    [HttpPatch("products/{productId}/hidden")]
+    public async Task<ActionResult> UpdateProductHidden(
+        string productId,
+        [FromBody] UpdateStatusRequest request,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        await _productHiddenRepo.SetHiddenAsync(productId, request.Status);
+
+        return Ok(new { Success = true, Message = $"Product visibility updated." });
     }
 
     [HttpGet("workdays")]

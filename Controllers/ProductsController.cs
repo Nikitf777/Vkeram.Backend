@@ -15,15 +15,17 @@ public class ProductsController : ControllerBase
     private readonly IProductImageRepository _productImageRepo;
     private readonly IProductImagePreviewRepository _productImagePreviewRepo;
     private readonly IProductCharacteristicRepository _productCharacteristicRepo;
+    private readonly IProductHiddenRepository _productHiddenRepo;
     private readonly string _baseUrl;
 
-    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductImagePreviewRepository productImagePreviewRepo, IProductCharacteristicRepository productCharacteristicRepo, IHttpContextAccessor httpContextAccessor)
+    public ProductsController(IProductService productService, IProductPriceRepository productPriceRepo, IProductImageRepository productImageRepo, IProductImagePreviewRepository productImagePreviewRepo, IProductCharacteristicRepository productCharacteristicRepo, IProductHiddenRepository productHiddenRepo, IHttpContextAccessor httpContextAccessor)
     {
         _productService = productService;
         _productPriceRepo = productPriceRepo;
         _productImageRepo = productImageRepo;
         _productImagePreviewRepo = productImagePreviewRepo;
         _productCharacteristicRepo = productCharacteristicRepo;
+        _productHiddenRepo = productHiddenRepo;
         var request = httpContextAccessor.HttpContext?.Request;
         _baseUrl = request != null ? $"{request.Scheme}://{request.Host}" : "";
     }
@@ -32,6 +34,10 @@ public class ProductsController : ControllerBase
     public async Task<IActionResult> GetAll([FromQuery] ProductCharacteristicInclude include = ProductCharacteristicInclude.None, [FromQuery] bool includePreviews = false)
     {
         var products = await _productService.GetAllAsync();
+
+        var hiddenProducts = await _productHiddenRepo.GetAllAsync();
+        var hiddenIds = hiddenProducts.Where(h => h.IsHidden).Select(h => h.ProductId).ToHashSet();
+        products = products.Where(p => !hiddenIds.Contains(p.Id)).ToList();
 
         var latestPrices = await _productPriceRepo.GetLatestPerProductAsync();
         var priceMap = latestPrices.ToDictionary(p => p.ProductId);
@@ -81,6 +87,10 @@ public class ProductsController : ControllerBase
     {
         var product = await _productService.GetByIdAsync(id);
         if (product == null)
+            return NotFound();
+
+        var hidden = await _productHiddenRepo.GetByProductIdAsync(id);
+        if (hidden is { IsHidden: true })
             return NotFound();
 
         var latestPrice = await _productPriceRepo.GetLatestForProductAsync(id);

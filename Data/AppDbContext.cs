@@ -29,6 +29,7 @@ public class AppDbContext : DbContext
     public DbSet<ReservationDuration> ReservationDuration => Set<ReservationDuration>();
     public DbSet<OrderLimits> OrderLimits => Set<OrderLimits>();
     public DbSet<AutoConfirmOrders> AutoConfirmOrders => Set<AutoConfirmOrders>();
+    public DbSet<ProductHidden> ProductHidden => Set<ProductHidden>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -167,6 +168,11 @@ public class AppDbContext : DbContext
             entity.Property(e => e.ContentType).HasMaxLength(100);
             entity.HasIndex(e => e.ProductId);
             entity.HasIndex(e => e.ImageId);
+        });
+
+        modelBuilder.Entity<ProductHidden>(entity =>
+        {
+            entity.Property(e => e.ProductId).HasMaxLength(100);
         });
 
         modelBuilder.Entity<ProductCharacteristic>(entity =>

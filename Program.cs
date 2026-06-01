@@ -38,12 +38,13 @@ builder.Services.AddScoped<IReservationDurationRepository, ReservationDurationRe
 builder.Services.AddScoped<IOrderLimitsRepository, OrderLimitsRepository>();
 builder.Services.AddScoped<IAutoConfirmOrdersRepository, AutoConfirmOrdersRepository>();
 builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacteristicRepository>();
+builder.Services.AddScoped<IProductHiddenRepository, ProductHiddenRepository>();
 builder.Services.AddScoped<IImagePreviewService, ImagePreviewService>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
 {
-    client.BaseAddress = new Uri(builder.Configuration["OneC:BaseUrl"]! + builder.Configuration["OneC:ProductsPath"]);
+    client.BaseAddress = new Uri(builder.Configuration["OneC:BaseUrl"]!);
     client.DefaultRequestHeaders.Add("Authorization", builder.Configuration["OneC:AuthHeader"]);
 });
 

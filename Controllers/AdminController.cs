@@ -1512,11 +1512,13 @@ public class AdminController : ControllerBase
     [HttpGet("products/{productId}/prices")]
     public async Task<ActionResult> GetProductPriceHistory(
         string productId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
-        var prices = await _productPriceRepo.GetHistoryForProductAsync(productId);
+        var prices = await _productPriceRepo.GetHistoryForProductAsync(productId, from, to);
         var result = prices.Select(p => new
         {
             p.Id,

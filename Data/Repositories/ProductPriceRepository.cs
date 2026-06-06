@@ -35,10 +35,18 @@ public class ProductPriceRepository : IProductPriceRepository
             .FirstOrDefaultAsync();
     }
 
-    public async Task<List<ProductPrice>> GetHistoryForProductAsync(string productId)
+    public async Task<List<ProductPrice>> GetHistoryForProductAsync(string productId, DateTime? from = null, DateTime? to = null)
     {
-        return await _db.ProductPrices
-            .Where(p => p.ProductId == productId)
+        var query = _db.ProductPrices
+            .Where(p => p.ProductId == productId);
+
+        if (from.HasValue)
+            query = query.Where(p => p.CreatedAt >= from.Value);
+
+        if (to.HasValue)
+            query = query.Where(p => p.CreatedAt <= to.Value);
+
+        return await query
             .OrderByDescending(p => p.CreatedAt)
             .ToListAsync();
     }

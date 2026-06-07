@@ -265,9 +265,10 @@ public class AdminController : ControllerBase
         var result = orders.Select(o => new
         {
             o.Id,
+            UserId = o.User.Id,
             UserBuyerId = o.User.BuyerId,
             UserBuyerName = buyerMap.GetValueOrDefault(o.User.BuyerId, o.User.BuyerId),
-            UserEmail = o.User.ContactEmail,
+            UserContactName = o.User.ContactName,
             o.IsConfirmed,
             o.PaymentStatus,
             o.ShipmentStatus,

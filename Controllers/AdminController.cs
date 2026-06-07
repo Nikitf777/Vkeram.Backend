@@ -254,11 +254,18 @@ public class AdminController : ControllerBase
 
     [HttpGet("orders")]
     public async Task<ActionResult> GetOrders(
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
         [FromHeader(Name = "X-Admin-Key")] string adminKey)
     {
         if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
 
-        var orders = await _orderRepo.GetAllAsync();
+        var orders = await _orderRepo.GetAllAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
         var buyers = await _buyersService.GetAllAsync();
         var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
 

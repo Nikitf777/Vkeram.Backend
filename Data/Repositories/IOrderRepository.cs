@@ -9,7 +9,7 @@ public interface IOrderRepository
     Task<Order?> GetByIdAsync(int id);
     Task UpdateAsync(Order order);
     Task<List<OrderReservation>> GetFutureReservationsAsync(DateOnly? from = null, DateOnly? to = null);
-    Task<List<Order>> GetAllAsync();
+    Task<List<Order>> GetAllAsync(DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null);
     Task<List<Order>> GetByUserIdAsync(int userId);
     Task<List<Order>> GetByUserIdsAsync(List<int> userIds);
     Task<OrderReservation?> GetReservationByIdAsync(int id);

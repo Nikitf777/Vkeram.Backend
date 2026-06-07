@@ -71,9 +71,9 @@ public class OrderRepository : IOrderRepository
             .ToListAsync();
     }
 
-    public async Task<List<Order>> GetAllAsync()
+    public async Task<List<Order>> GetAllAsync(DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null)
     {
-        return await _db.Orders
+        var query = _db.Orders
             .Include(o => o.User)
             .Include(o => o.Reservations)
                 .ThenInclude(r => r.ProductReservations)
@@ -81,8 +81,29 @@ public class OrderRepository : IOrderRepository
             .Include(o => o.Deliveries)
                 .ThenInclude(d => d.ProductReservations)
                 .ThenInclude(pr => pr.ProductPrice)
+            .AsQueryable();
+
+        if (from.HasValue)
+            query = query.Where(o => o.CreatedAt >= from.Value);
+        if (to.HasValue)
+            query = query.Where(o => o.CreatedAt <= to.Value);
+        if (isConfirmed.HasValue)
+            query = query.Where(o => o.IsConfirmed == isConfirmed.Value);
+        if (!string.IsNullOrWhiteSpace(buyerId))
+            query = query.Where(o => o.User.BuyerId == buyerId);
+        if (userId.HasValue)
+            query = query.Where(o => o.UserId == userId.Value);
+
+        var orders = await query
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
+
+        if (!string.IsNullOrWhiteSpace(paymentStatus))
+            orders = orders.Where(o => o.PaymentStatus == paymentStatus).ToList();
+        if (!string.IsNullOrWhiteSpace(shipmentStatus))
+            orders = orders.Where(o => o.ShipmentStatus == shipmentStatus).ToList();
+
+        return orders;
     }
 
     public async Task<List<Order>> GetByUserIdAsync(int userId)

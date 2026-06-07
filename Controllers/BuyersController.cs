@@ -11,14 +11,12 @@ public class BuyersController : ControllerBase
 {
     private readonly IBuyersService _buyersService;
     private readonly IUserRepository _userRepo;
-    private readonly IOrderRepository _orderRepo;
     private readonly string _adminKey;
 
-    public BuyersController(IBuyersService buyersService, IUserRepository userRepo, IOrderRepository orderRepo, IConfiguration config)
+    public BuyersController(IBuyersService buyersService, IUserRepository userRepo, IConfiguration config)
     {
         _buyersService = buyersService;
         _userRepo = userRepo;
-        _orderRepo = orderRepo;
         _adminKey = config["AdminApiKey"] ?? "";
     }
 
@@ -78,26 +76,6 @@ public class BuyersController : ControllerBase
             })
             .ToList();
 
-        var userIds = buyerUsers.Select(u => u.Id).ToList();
-        var orders = userIds.Count > 0
-            ? await _orderRepo.GetByUserIdsAsync(userIds)
-            : new List<Models.Order>();
-
-        var orderResults = orders.Select(o => new
-        {
-            o.Id,
-            UserId = o.User?.Id ?? 0,
-            UserName = o.User?.ContactName ?? "",
-            o.IsConfirmed,
-            o.PaymentStatus,
-            o.ShipmentStatus,
-            o.CreatedAt,
-            ReservationsCount = o.Reservations.Count,
-            DeliveriesCount = o.Deliveries.Count,
-            TotalPrice = o.TotalPrice,
-            TotalQuantity = o.TotalQuantity
-        }).ToList();
-
         return Ok(new
         {
             Success = true,
@@ -105,8 +83,7 @@ public class BuyersController : ControllerBase
             {
                 Id = id,
                 buyer.Name,
-                Users = buyerUsers,
-                Orders = orderResults
+                Users = buyerUsers
             }
         });
     }

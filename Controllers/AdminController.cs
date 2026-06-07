@@ -289,6 +289,46 @@ public class AdminController : ControllerBase
         return Ok(new { Success = true, Orders = result });
     }
 
+    [HttpGet("orders/by-product/{productId}")]
+    public async Task<ActionResult> GetOrdersByProduct(
+        string productId,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var orders = await _orderRepo.GetByProductIdAsync(productId, from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+        var buyers = await _buyersService.GetAllAsync();
+        var buyerMap = buyers.ToDictionary(b => b.Id, b => b.Name);
+
+        var result = orders.Select(o => new
+        {
+            o.Id,
+            UserId = o.User.Id,
+            UserBuyerId = o.User.BuyerId,
+            UserBuyerName = buyerMap.GetValueOrDefault(o.User.BuyerId, o.User.BuyerId),
+            UserContactName = o.User.ContactName,
+            o.IsConfirmed,
+            o.PaymentStatus,
+            o.ShipmentStatus,
+            o.CreatedAt,
+            ReservationsCount = o.Reservations.Count,
+            DeliveriesCount = o.Deliveries.Count,
+            TotalPrice = o.TotalPrice,
+            TotalQuantity = o.TotalQuantity,
+            ProductQuantity = o.Reservations.Sum(r => r.ProductReservations.Where(pr => pr.ProductId == productId).Sum(pr => pr.Quantity))
+                         + o.Deliveries.Sum(d => d.ProductReservations.Where(pr => pr.ProductId == productId).Sum(pr => pr.Quantity))
+        }).ToList();
+
+        return Ok(new { Success = true, Orders = result });
+    }
+
     [HttpGet("orders/{orderId}")]
     public async Task<ActionResult> GetOrderDetail(
         int orderId,

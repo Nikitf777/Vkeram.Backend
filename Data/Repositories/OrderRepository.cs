@@ -73,7 +73,20 @@ public class OrderRepository : IOrderRepository
 
     public async Task<List<Order>> GetAllAsync(DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null)
     {
+        return await FilterOrdersAsync(_db.Orders.AsQueryable(), from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+    }
+
+    public async Task<List<Order>> GetByProductIdAsync(string productId, DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null)
+    {
         var query = _db.Orders
+            .Where(o => o.Reservations.Any(r => r.ProductReservations.Any(pr => pr.ProductId == productId))
+                     || o.Deliveries.Any(d => d.ProductReservations.Any(pr => pr.ProductId == productId)));
+        return await FilterOrdersAsync(query, from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+    }
+
+    private async Task<List<Order>> FilterOrdersAsync(IQueryable<Order> query, DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null)
+    {
+        query = query
             .Include(o => o.User)
             .Include(o => o.Reservations)
                 .ThenInclude(r => r.ProductReservations)

@@ -1,7 +1,10 @@
 using System.Text;
+using DotMake.CommandLine;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
+using Vkeram.Backend;
+using Vkeram.Backend.Commands;
 using Vkeram.Backend.Data;
 using Vkeram.Backend.Data.Repositories;
 using Vkeram.Backend.Services;
@@ -41,6 +44,8 @@ builder.Services.AddScoped<IProductCharacteristicRepository, ProductCharacterist
 builder.Services.AddScoped<IProductHiddenRepository, ProductHiddenRepository>();
 builder.Services.AddScoped<IHideProductsWithoutPriceRepository, HideProductsWithoutPriceRepository>();
 builder.Services.AddScoped<IImagePreviewService, ImagePreviewService>();
+builder.Services.AddScoped<IOrderConfirmationService, OrderConfirmationService>();
+builder.Services.AddScoped<IDemoDataSeeder, DemoDataSeeder>();
 builder.Services.AddHttpContextAccessor();
 
 builder.Services.AddHttpClient<IProductService, ProductService>(client =>
@@ -92,6 +97,16 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<AppDbContext>();
     await DbInitializer.SeedAsync(db);
+
+    if (args.Length > 0 && args[0] == "seed")
+    {
+        AppServiceProvider.Instance = app.Services;
+        await Cli.RunAsync<SeedCommand>([]);
+        return;
+    }
+
+    var seeder = scope.ServiceProvider.GetRequiredService<IDemoDataSeeder>();
+    await seeder.SeedAsync();
 }
 
 if (app.Environment.IsDevelopment())

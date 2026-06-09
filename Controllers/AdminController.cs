@@ -301,6 +301,222 @@ public class AdminController : ControllerBase
         return Ok(new { Success = true, Orders = result });
     }
 
+    [HttpGet("orders/aggregate/by-product/{productId}")]
+    public async Task<ActionResult> GetOrderAggregateByProduct(
+        string productId,
+        [FromQuery] string groupBy,
+        [FromQuery] int? days,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var lines = await _orderRepo.GetAggregationLinesAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId, productId);
+        var result = AggregateLines(lines, groupBy, days ?? 7);
+        return Ok(new { Success = true, Aggregation = result });
+    }
+
+    [HttpGet("orders/aggregate/all")]
+    public async Task<ActionResult> GetOrderAggregateAll(
+        [FromQuery] string groupBy,
+        [FromQuery] int? days,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var lines = await _orderRepo.GetAggregationLinesAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+        var result = AggregateLines(lines, groupBy, days ?? 7);
+        return Ok(new { Success = true, Aggregation = result });
+    }
+
+    [HttpGet("orders/aggregate/per-product")]
+    public async Task<ActionResult> GetOrderAggregatePerProduct(
+        [FromQuery] string groupBy,
+        [FromQuery] int? days,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var lines = await _orderRepo.GetAggregationLinesAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+        var result = AggregateLinesPerProduct(lines, groupBy, days ?? 7);
+        return Ok(new { Success = true, Aggregation = result });
+    }
+
+    [HttpGet("orders/aggregate/per-buyer")]
+    public async Task<ActionResult> GetOrderAggregatePerBuyer(
+        [FromQuery] string groupBy,
+        [FromQuery] int? days,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] string? buyerId,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var lines = await _orderRepo.GetAggregationLinesAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+        var buyerMap = (await _buyersService.GetAllAsync()).ToDictionary(b => b.Id, b => b.Name);
+        var result = AggregateLinesPerBuyer(lines, groupBy, days ?? 7, buyerMap);
+        return Ok(new { Success = true, Aggregation = result });
+    }
+
+    [HttpGet("orders/aggregate/by-buyer/{buyerId}")]
+    public async Task<ActionResult> GetOrderAggregateByBuyer(
+        string buyerId,
+        [FromQuery] string groupBy,
+        [FromQuery] int? days,
+        [FromQuery] DateTime? from,
+        [FromQuery] DateTime? to,
+        [FromQuery] bool? isConfirmed,
+        [FromQuery] string? paymentStatus,
+        [FromQuery] string? shipmentStatus,
+        [FromQuery] int? userId,
+        [FromHeader(Name = "X-Admin-Key")] string adminKey)
+    {
+        if (!IsValidAdmin(adminKey)) return UnauthorizedResponse();
+
+        var lines = await _orderRepo.GetAggregationLinesAsync(from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+        var result = AggregateLines(lines, groupBy, days ?? 7);
+        return Ok(new { Success = true, Aggregation = result });
+    }
+
+    private static List<object> AggregateLinesPerBuyer(List<OrderProductLine> lines, string groupBy, int daysInterval, Dictionary<string, string> buyerMap)
+    {
+        var periodKey = groupBy.ToLowerInvariant() switch
+        {
+            "day" => (Func<OrderProductLine, string>)(l => l.CreatedAt.ToString("yyyy-MM-dd")),
+            "week" => l =>
+            {
+                var c = l.CreatedAt;
+                var cal = System.Globalization.CultureInfo.InvariantCulture.Calendar;
+                var week = cal.GetWeekOfYear(c, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+                return $"{c.Year:0000}-W{week:00}";
+            },
+            "month" => l => l.CreatedAt.ToString("yyyy-MM"),
+            "year" => l => l.CreatedAt.ToString("yyyy"),
+            "days" => l =>
+            {
+                var daysSinceEpoch = (int)(l.CreatedAt.Date - DateTime.UnixEpoch).TotalDays;
+                var intervalIndex = daysSinceEpoch / daysInterval;
+                var intervalStart = DateTime.UnixEpoch.AddDays(intervalIndex * daysInterval);
+                return intervalStart.ToString("yyyy-MM-dd");
+            },
+            _ => throw new ArgumentException($"Invalid groupBy: {groupBy}")
+        };
+
+        return lines
+            .GroupBy(l => periodKey(l))
+            .Select(g => new
+            {
+                period = g.Key,
+                items = g.GroupBy(l => l.BuyerId).Select(bg => new
+                {
+                    buyerId = bg.Key,
+                    buyerName = buyerMap.GetValueOrDefault(bg.Key, bg.Key),
+                    totalQuantity = bg.Sum(l => l.Quantity),
+                    totalPrice = bg.Sum(l => l.Quantity * l.UnitPrice * (1 + l.Vat / 100m))
+                }).OrderBy(x => x.buyerId).ToList()
+            })
+            .OrderBy(x => x.period)
+            .ToList<object>();
+    }
+
+    private static List<object> AggregateLinesPerProduct(List<OrderProductLine> lines, string groupBy, int daysInterval)
+    {
+        var periodKey = groupBy.ToLowerInvariant() switch
+        {
+            "day" => (Func<OrderProductLine, string>)(l => l.CreatedAt.ToString("yyyy-MM-dd")),
+            "week" => l =>
+            {
+                var c = l.CreatedAt;
+                var cal = System.Globalization.CultureInfo.InvariantCulture.Calendar;
+                var week = cal.GetWeekOfYear(c, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+                return $"{c.Year:0000}-W{week:00}";
+            },
+            "month" => l => l.CreatedAt.ToString("yyyy-MM"),
+            "year" => l => l.CreatedAt.ToString("yyyy"),
+            "days" => l =>
+            {
+                var daysSinceEpoch = (int)(l.CreatedAt.Date - DateTime.UnixEpoch).TotalDays;
+                var intervalIndex = daysSinceEpoch / daysInterval;
+                var intervalStart = DateTime.UnixEpoch.AddDays(intervalIndex * daysInterval);
+                return intervalStart.ToString("yyyy-MM-dd");
+            },
+            _ => throw new ArgumentException($"Invalid groupBy: {groupBy}")
+        };
+
+        return lines
+            .GroupBy(l => periodKey(l))
+            .Select(g => new
+            {
+                period = g.Key,
+                items = g.GroupBy(l => l.ProductId).Select(pg => new
+                {
+                    productId = pg.Key,
+                    totalQuantity = pg.Sum(l => l.Quantity),
+                    totalPrice = pg.Sum(l => l.Quantity * l.UnitPrice * (1 + l.Vat / 100m))
+                }).OrderBy(x => x.productId).ToList()
+            })
+            .OrderBy(x => x.period)
+            .ToList<object>();
+    }
+
+    private static List<object> AggregateLines(List<OrderProductLine> lines, string groupBy, int daysInterval)
+    {
+        var grouped = groupBy.ToLowerInvariant() switch
+        {
+            "day" => lines.GroupBy(l => l.CreatedAt.ToString("yyyy-MM-dd")),
+            "week" => lines.GroupBy(l =>
+            {
+                var c = l.CreatedAt;
+                var cal = System.Globalization.CultureInfo.InvariantCulture.Calendar;
+                var week = cal.GetWeekOfYear(c, System.Globalization.CalendarWeekRule.FirstFourDayWeek, DayOfWeek.Monday);
+                return $"{c.Year:0000}-W{week:00}";
+            }),
+            "month" => lines.GroupBy(l => l.CreatedAt.ToString("yyyy-MM")),
+            "year" => lines.GroupBy(l => l.CreatedAt.ToString("yyyy")),
+            "days" => lines.GroupBy(l =>
+            {
+                var daysSinceEpoch = (int)(l.CreatedAt.Date - DateTime.UnixEpoch).TotalDays;
+                var intervalIndex = daysSinceEpoch / daysInterval;
+                var intervalStart = DateTime.UnixEpoch.AddDays(intervalIndex * daysInterval);
+                return intervalStart.ToString("yyyy-MM-dd");
+            }),
+            _ => throw new ArgumentException($"Invalid groupBy: {groupBy}")
+        };
+
+        return grouped.Select(g => new
+        {
+            period = g.Key,
+            totalQuantity = g.Sum(l => l.Quantity),
+            totalPrice = g.Sum(l => l.Quantity * l.UnitPrice * (1 + l.Vat / 100m)),
+            orderCount = g.Select(l => l.CreatedAt).Distinct().Count()
+        }).OrderBy(x => x.period).ToList<object>();
+    }
+
     [HttpGet("orders/{orderId}")]
     public async Task<ActionResult> GetOrderDetail(
         int orderId,

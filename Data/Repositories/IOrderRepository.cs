@@ -19,4 +19,5 @@ public interface IOrderRepository
     Task UpdateDeliveryAsync(OrderDelivery delivery);
     Task<List<OrderReservation>> GetReservationsAsync(DateOnly? minDate = null, DateOnly? maxDate = null);
     Task<List<OrderDelivery>> GetDeliveriesAsync(DateTime? minDate = null, DateTime? maxDate = null);
+    Task<List<OrderProductLine>> GetAggregationLinesAsync(DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null, string? productId = null);
 }

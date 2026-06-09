@@ -204,4 +204,38 @@ public class OrderRepository : IOrderRepository
             .OrderBy(d => d.DeliveryTime)
             .ToListAsync();
     }
+
+    public async Task<List<OrderProductLine>> GetAggregationLinesAsync(DateTime? from = null, DateTime? to = null, bool? isConfirmed = null, string? paymentStatus = null, string? shipmentStatus = null, string? buyerId = null, int? userId = null, string? productId = null)
+    {
+        var orders = await FilterOrdersAsync(_db.Orders.AsQueryable(), from, to, isConfirmed, paymentStatus, shipmentStatus, buyerId, userId);
+
+        var lines = new List<OrderProductLine>();
+
+        foreach (var order in orders)
+        {
+            foreach (var reservation in order.Reservations)
+            {
+                foreach (var pr in reservation.ProductReservations)
+                {
+                    if (productId == null || pr.ProductId == productId)
+                    {
+                        lines.Add(new OrderProductLine(order.CreatedAt, pr.ProductId, pr.Quantity, pr.ProductPrice?.Price ?? 0, pr.Vat, order.User.BuyerId));
+                    }
+                }
+            }
+
+            foreach (var delivery in order.Deliveries)
+            {
+                foreach (var pr in delivery.ProductReservations)
+                {
+                    if (productId == null || pr.ProductId == productId)
+                    {
+                        lines.Add(new OrderProductLine(order.CreatedAt, pr.ProductId, pr.Quantity, pr.ProductPrice?.Price ?? 0, pr.Vat, order.User.BuyerId));
+                    }
+                }
+            }
+        }
+
+        return lines;
+    }
 }

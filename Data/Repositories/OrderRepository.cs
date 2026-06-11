@@ -99,7 +99,7 @@ public class OrderRepository : IOrderRepository
         if (from.HasValue)
             query = query.Where(o => o.CreatedAt >= from.Value);
         if (to.HasValue)
-            query = query.Where(o => o.CreatedAt <= to.Value);
+            query = query.Where(o => o.CreatedAt < to.Value.AddDays(1));
         if (isConfirmed.HasValue)
             query = query.Where(o => o.IsConfirmed == isConfirmed.Value);
         if (!string.IsNullOrWhiteSpace(buyerId))

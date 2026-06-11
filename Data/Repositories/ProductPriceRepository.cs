@@ -44,7 +44,7 @@ public class ProductPriceRepository : IProductPriceRepository
             query = query.Where(p => p.CreatedAt >= from.Value);
 
         if (to.HasValue)
-            query = query.Where(p => p.CreatedAt <= to.Value);
+            query = query.Where(p => p.CreatedAt < to.Value.AddDays(1));
 
         return await query
             .OrderByDescending(p => p.CreatedAt)

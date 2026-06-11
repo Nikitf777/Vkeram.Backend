@@ -130,7 +130,7 @@ public class DemoDataSeeder : IDemoDataSeeder
             var price = new ProductPrice
             {
                 ProductId = product.Id,
-                Price = Math.Round((decimal)(_rng.NextDouble() * 250 + 50), 2),
+                Price = Math.Round((decimal)(_rng.NextDouble() * 5 + 0.5), 2),
                 CreatedAt = DateTime.UtcNow.AddDays(-_rng.Next(30, 400))
             };
             await _productPriceRepo.AddAsync(price);
